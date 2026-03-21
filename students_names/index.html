@@ -916,6 +916,47 @@
                 }
             }
         };
+
+        // ==================== CSVExporter ====================
+        const CSVExporter = {
+            // 导出记录为 CSV
+            async exportRecords() {
+                const records = await DataStore.getAllRecords();
+                if (records.length === 0) {
+                    Utils.showToast('没有记录可导出', true);
+                    return;
+                }
+
+                // 生成 CSV 内容
+                let csv = '时间,姓名,状态\n';
+
+                // 状态映射
+                const statusMap = {
+                    'normal': '正常',
+                    'late': '迟到',
+                    'absent': '缺勤'
+                };
+
+                for (const record of records) {
+                    const time = Utils.formatDateTime(record.timestamp);
+                    const status = statusMap[record.status] || record.status;
+                    csv += `${time},${record.studentName},${status}\n`;
+                }
+
+                // 创建 Blob 并下载
+                const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `点名记录_${Utils.getTodayString()}.csv`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                Utils.showToast(`已导出 ${records.length} 条记录`);
+            }
+        };
     </script>
 </body>
 </html>
