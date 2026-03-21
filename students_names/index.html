@@ -1212,6 +1212,42 @@
                 document.getElementById(modalId).classList.remove('show');
             }
         };
+
+        // ==================== App ====================
+        const App = {
+            // 初始化应用
+            async init() {
+                try {
+                    // 初始化数据存储
+                    await DataStore.init();
+
+                    // 初始化地球渲染
+                    EarthRenderer.init();
+
+                    // 初始化 UI 控制器
+                    UIController.init();
+
+                    // 隐藏加载状态
+                    document.getElementById('loading').style.display = 'none';
+
+                    console.log('应用初始化完成');
+
+                } catch (error) {
+                    console.error('应用初始化失败:', error);
+                    document.getElementById('loading').textContent = '初始化失败，请刷新页面重试';
+                }
+            }
+        };
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            App.init();
+        });
+
+        // 页面卸载时清理资源
+        window.addEventListener('beforeunload', () => {
+            EarthRenderer.dispose();
+        });
     </script>
 </body>
 </html>
