@@ -406,7 +406,56 @@
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script>
-        // JavaScript 代码将在后续步骤添加
+        // ==================== Mock Data ====================
+        const MOCK_STUDENTS = [
+            "张伟", "李娜", "王芳", "刘洋", "陈杰",
+            "杨秀英", "赵强", "黄敏", "周涛", "吴磊",
+            "徐静", "孙红", "马超", "朱丽", "胡勇",
+            "郭丹", "何平", "罗琳", "林峰", "高明"
+        ];
+
+        // ==================== Utils ====================
+        const Utils = {
+            // 生成 UUID
+            generateId() {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                    const r = Math.random() * 16 | 0;
+                    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            },
+
+            // 格式化日期时间
+            formatDateTime(timestamp) {
+                const date = new Date(timestamp);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            },
+
+            // 获取今日日期字符串
+            getTodayString() {
+                const date = new Date();
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            },
+
+            // 显示通知
+            showToast(message, isError = false) {
+                const toast = document.getElementById('toast');
+                toast.textContent = message;
+                toast.className = isError ? 'toast show error' : 'toast show';
+                setTimeout(() => {
+                    toast.className = 'toast';
+                }, 3000);
+            }
+        };
     </script>
 </body>
 </html>
