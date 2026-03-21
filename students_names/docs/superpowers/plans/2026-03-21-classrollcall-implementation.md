@@ -864,30 +864,34 @@ const EarthRenderer = {
         const container = document.getElementById('earth-container');
         container.innerHTML = '<div class="earth-fallback"></div>';
 
-        // 添加 CSS 动画样式
-        const style = document.createElement('style');
-        style.textContent = `
-            .earth-fallback {
-                width: 300px;
-                height: 300px;
-                border-radius: 50%;
-                background: radial-gradient(circle at 30% 30%, #2563eb, #1e3a5f);
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                animation: rotate 20s linear infinite;
-                box-shadow: 0 0 60px rgba(37, 99, 235, 0.5),
-                           inset -30px -30px 60px rgba(0, 0, 0, 0.3);
-            }
-            @keyframes rotate {
-                from { background-position: 0 0; }
-                to { background-position: 200% 0; }
-            }
-        `;
-        document.head.appendChild(style);
+        // 检查是否已添加样式（避免重复）
+        if (!document.getElementById('fallback-style')) {
+            const style = document.createElement('style');
+            style.id = 'fallback-style';
+            style.textContent = `
+                .earth-fallback {
+                    width: 300px;
+                    height: 300px;
+                    border-radius: 50%;
+                    background: radial-gradient(circle at 30% 30%, #3b82f6, #1e40af, #0f172a);
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    animation: earthRotate 30s linear infinite;
+                    box-shadow: 0 0 60px rgba(59, 130, 246, 0.5),
+                               inset -30px -30px 60px rgba(0, 0, 0, 0.4),
+                               inset 10px 10px 30px rgba(255, 255, 255, 0.1);
+                }
+                @keyframes earthRotate {
+                    from { transform: translate(-50%, -50%) rotateY(0deg); }
+                    to { transform: translate(-50%, -50%) rotateY(360deg); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
 
-        // 覆盖动画方法
+        // 覆盖动画方法（空操作，CSS 动画持续运行）
         this.startFastSpin = () => {};
         this.stopFastSpin = () => {};
         this.dispose = () => {};
@@ -1192,13 +1196,17 @@ const UIController = {
             }
         });
 
-        // ESC 键取消
+        // ESC 键处理
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                // 关闭记录弹窗
+                this.closeModal('records-modal');
+                // 关闭确认弹窗
+                this.closeModal('confirm-modal');
+                // 取消状态选择
                 if (this.state === 'AWAITING_STATUS') {
                     this.cancelSelection();
                 }
-                this.closeModal('records-modal');
             }
         });
 
@@ -1537,15 +1545,18 @@ git commit -m "docs: add README with usage instructions"
 - [ ] 选择后记录正确保存
 - [ ] 今日统计正确更新
 - [ ] 迟到学生权重增加
+- [ ] 权重上限生效（迟到 8+ 次后权重不超过 5）
 - [ ] 导出 CSV 格式正确
 - [ ] 查看记录弹窗显示
 - [ ] 重置迟到计数生效
 - [ ] 清空数据后重新初始化
 - [ ] ESC 键在状态选择时取消点名
 - [ ] ESC 键关闭记录弹窗
+- [ ] ESC 键关闭确认弹窗
 - [ ] 点击姓名区域取消选择
 - [ ] 确认弹窗回调正确执行（重置迟到、清空数据）
 - [ ] Three.js 初始化失败时降级到 CSS 动画（模拟：禁用 WebGL）
+- [ ] 低性能设备自动降低渲染质量（FPS < 30 时）
 
 - [ ] **Step 2: 性能检查**
 
