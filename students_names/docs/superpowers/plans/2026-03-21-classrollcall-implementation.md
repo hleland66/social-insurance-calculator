@@ -699,14 +699,14 @@ const DataStore = {
         return records.sort((a, b) => b.timestamp - a.timestamp);
     },
 
-    // 获取今日记录
+    // 获取今日记录（使用高效的日期比较）
     async getTodayRecords() {
         const allRecords = await this.getAllRecords();
-        const today = Utils.getTodayString();
-        return allRecords.filter(r => {
-            const dateStr = Utils.formatDateTime(r.timestamp).split(' ')[0];
-            return dateStr === today;
-        });
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const todayEnd = todayStart + 24 * 60 * 60 * 1000;
+
+        return allRecords.filter(r => r.timestamp >= todayStart && r.timestamp < todayEnd);
     },
 
     // 清空所有数据
@@ -815,37 +815,82 @@ const EarthRenderer = {
     currentSpeed: 0.001,
     targetSpeed: 0.001,
     animationId: null,
+    lastFrameTime: 0,
+    frameCount: 0,
+    fps: 60,
+    lowQualityMode: false,
 
     // 初始化 Three.js 场景
     init() {
+        try {
+            const container = document.getElementById('earth-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // 创建场景
+            this.scene = new THREE.Scene();
+
+            // 创建相机
+            this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            this.camera.position.z = 6;
+
+            // 创建渲染器
+            this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            this.renderer.setSize(width, height);
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(this.renderer.domElement);
+
+            // 创建地球
+            this.createEarth();
+
+            // 添加灯光
+            this.addLights();
+
+            // 监听窗口大小变化
+            window.addEventListener('resize', () => this.onResize());
+
+            // 开始动画循环
+            this.animate();
+
+        } catch (error) {
+            console.error('Three.js 初始化失败:', error);
+            Utils.showToast('3D 渲染初始化失败，使用简化模式', true);
+            this.initFallback();
+        }
+    },
+
+    // 降级到 CSS 动画模式
+    initFallback() {
         const container = document.getElementById('earth-container');
-        const width = container.clientWidth;
-        const height = container.clientHeight;
+        container.innerHTML = '<div class="earth-fallback"></div>';
 
-        // 创建场景
-        this.scene = new THREE.Scene();
+        // 添加 CSS 动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .earth-fallback {
+                width: 300px;
+                height: 300px;
+                border-radius: 50%;
+                background: radial-gradient(circle at 30% 30%, #2563eb, #1e3a5f);
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                animation: rotate 20s linear infinite;
+                box-shadow: 0 0 60px rgba(37, 99, 235, 0.5),
+                           inset -30px -30px 60px rgba(0, 0, 0, 0.3);
+            }
+            @keyframes rotate {
+                from { background-position: 0 0; }
+                to { background-position: 200% 0; }
+            }
+        `;
+        document.head.appendChild(style);
 
-        // 创建相机
-        this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-        this.camera.position.z = 6;
-
-        // 创建渲染器
-        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        this.renderer.setSize(width, height);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        container.appendChild(this.renderer.domElement);
-
-        // 创建地球
-        this.createEarth();
-
-        // 添加灯光
-        this.addLights();
-
-        // 监听窗口大小变化
-        window.addEventListener('resize', () => this.onResize());
-
-        // 开始动画循环
-        this.animate();
+        // 覆盖动画方法
+        this.startFastSpin = () => {};
+        this.stopFastSpin = () => {};
+        this.dispose = () => {};
     },
 
     // 创建地球（程序生成网格纹理）
@@ -936,8 +981,23 @@ const EarthRenderer = {
     },
 
     // 动画循环
-    animate() {
-        this.animationId = requestAnimationFrame(() => this.animate());
+    animate(currentTime = 0) {
+        this.animationId = requestAnimationFrame((t) => this.animate(t));
+
+        // FPS 监控
+        this.frameCount++;
+        if (currentTime - this.lastFrameTime >= 1000) {
+            this.fps = this.frameCount;
+            this.frameCount = 0;
+            this.lastFrameTime = currentTime;
+
+            // 低性能检测：FPS 持续低于 30，启用低质量模式
+            if (this.fps < 30 && !this.lowQualityMode && this.renderer) {
+                this.lowQualityMode = true;
+                this.renderer.setPixelRatio(1);
+                console.log('检测到低性能设备，已降低渲染质量');
+            }
+        }
 
         // 平滑过渡到目标速度
         this.currentSpeed += (this.targetSpeed - this.currentSpeed) * 0.05;
@@ -947,7 +1007,9 @@ const EarthRenderer = {
             this.earth.rotation.y += this.currentSpeed;
         }
 
-        this.renderer.render(this.scene, this.camera);
+        if (this.renderer) {
+            this.renderer.render(this.scene, this.camera);
+        }
     },
 
     // 开始加速旋转
@@ -1064,6 +1126,7 @@ const UIController = {
     // 应用状态
     state: 'IDLE', // IDLE, SPINNING, SHOWING_NAME, AWAITING_STATUS
     selectedStudent: null,
+    confirmCallback: null, // 存储确认回调
     statusMap: {
         'normal': '正常',
         'late': '迟到',
@@ -1139,9 +1202,19 @@ const UIController = {
             }
         });
 
-        // 确认弹窗
+        // 确认弹窗取消按钮
         document.getElementById('confirm-cancel').addEventListener('click', () => {
             this.closeModal('confirm-modal');
+            this.confirmCallback = null;
+        });
+
+        // 确认弹窗确认按钮（使用单例回调模式）
+        document.getElementById('confirm-ok').addEventListener('click', async () => {
+            if (this.confirmCallback) {
+                this.closeModal('confirm-modal');
+                await this.confirmCallback();
+                this.confirmCallback = null;
+            }
         });
     },
 
@@ -1281,21 +1354,11 @@ const UIController = {
         this.showModal('records-modal');
     },
 
-    // 显示确认弹窗
+    // 显示确认弹窗（使用单例回调模式，避免重复绑定）
     showConfirmModal(message, onConfirm) {
         document.getElementById('confirm-message').textContent = message;
+        this.confirmCallback = onConfirm;
         this.showModal('confirm-modal');
-
-        const okBtn = document.getElementById('confirm-ok');
-
-        // 移除旧的监听器
-        const newOkBtn = okBtn.cloneNode(true);
-        okBtn.parentNode.replaceChild(newOkBtn, okBtn);
-
-        newOkBtn.addEventListener('click', async () => {
-            this.closeModal('confirm-modal');
-            await onConfirm();
-        });
     },
 
     // 显示弹窗
@@ -1478,8 +1541,11 @@ git commit -m "docs: add README with usage instructions"
 - [ ] 查看记录弹窗显示
 - [ ] 重置迟到计数生效
 - [ ] 清空数据后重新初始化
-- [ ] ESC 键取消功能
-- [ ] 点击姓名取消功能
+- [ ] ESC 键在状态选择时取消点名
+- [ ] ESC 键关闭记录弹窗
+- [ ] 点击姓名区域取消选择
+- [ ] 确认弹窗回调正确执行（重置迟到、清空数据）
+- [ ] Three.js 初始化失败时降级到 CSS 动画（模拟：禁用 WebGL）
 
 - [ ] **Step 2: 性能检查**
 
