@@ -642,6 +642,41 @@
                 }
             }
         };
+
+        // ==================== RandomPicker ====================
+        const RandomPicker = {
+            // 计算学生权重（上限为5）
+            calculateWeight(student) {
+                const baseWeight = 1;
+                const lateWeight = 1 + (student.lateCount * 0.5);
+                return Math.min(lateWeight, 5);
+            },
+
+            // 加权随机选择
+            async pickStudent() {
+                const students = await DataStore.getAllStudents();
+                if (students.length === 0) {
+                    throw new Error('没有学生数据');
+                }
+
+                // 计算所有学生权重
+                const weights = students.map(s => this.calculateWeight(s));
+                const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+                // 生成随机数
+                let random = Math.random() * totalWeight;
+
+                // 选择学生
+                for (let i = 0; i < students.length; i++) {
+                    random -= weights[i];
+                    if (random <= 0) {
+                        return students[i];
+                    }
+                }
+
+                return students[students.length - 1];
+            }
+        };
     </script>
 </body>
 </html>
