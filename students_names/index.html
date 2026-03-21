@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>课堂点名器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* 顶部工具栏 */
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(99, 102, 241, 0.8);
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: rgba(99, 102, 241, 1);
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.8);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 1);
+        }
+
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* 地球容器 */
+        #earth-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* 姓名显示区 */
+        .name-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            text-align: center;
+        }
+
+        .student-name {
+            font-size: 72px;
+            font-weight: bold;
+            text-shadow: 0 0 30px rgba(99, 102, 241, 0.8),
+                         0 0 60px rgba(99, 102, 241, 0.4);
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.6s ease-out;
+        }
+
+        .student-name.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* 状态选择按钮 */
+        .status-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .status-buttons.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .status-btn {
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .status-btn.normal {
+            background: rgba(34, 197, 94, 0.8);
+        }
+
+        .status-btn.late {
+            background: rgba(251, 191, 36, 0.8);
+        }
+
+        .status-btn.absent {
+            background: rgba(239, 68, 68, 0.8);
+        }
+
+        .status-btn:hover {
+            transform: scale(1.05);
+            border-color: #fff;
+        }
+
+        /* 主点名按钮 */
+        .main-button-container {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+
+        #start-btn {
+            padding: 20px 60px;
+            font-size: 24px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+            transition: all 0.3s;
+        }
+
+        #start-btn:hover:not(:disabled) {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(99, 102, 241, 0.6);
+        }
+
+        #start-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 底部统计栏 */
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 16px;
+        }
+
+        .stat-item {
+            display: flex;
+            gap: 8px;
+        }
+
+        .stat-value {
+            color: #8b5cf6;
+            font-weight: bold;
+        }
+
+        /* 弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        /* 记录列表 */
+        .records-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .record-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .record-status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .record-status.normal {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .record-status.late {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .record-status.absent {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        /* 确认弹窗 */
+        .confirm-dialog {
+            text-align: center;
+        }
+
+        .confirm-dialog p {
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .confirm-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        /* 通知提示 */
+        .toast {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 15px 25px;
+            background: rgba(34, 197, 94, 0.9);
+            color: #fff;
+            border-radius: 8px;
+            z-index: 200;
+            transform: translateX(400px);
+            transition: transform 0.3s;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.error {
+            background: rgba(239, 68, 68, 0.9);
+        }
+
+        /* 加载状态 */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 工具栏 -->
+        <div class="toolbar">
+            <button class="btn" id="export-btn">导出记录</button>
+            <button class="btn" id="view-records-btn">查看记录</button>
+            <button class="btn" id="reset-late-btn">重置迟到</button>
+            <button class="btn btn-danger" id="clear-data-btn">清空数据</button>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 地球容器 -->
+            <div id="earth-container"></div>
+
+            <!-- 姓名显示 -->
+            <div class="name-display">
+                <div class="student-name" id="student-name"></div>
+                <div class="status-buttons" id="status-buttons">
+                    <button class="status-btn normal" data-status="normal">正常</button>
+                    <button class="status-btn late" data-status="late">迟到</button>
+                    <button class="status-btn absent" data-status="absent">缺勤</button>
+                </div>
+            </div>
+
+            <!-- 主按钮 -->
+            <div class="main-button-container">
+                <button id="start-btn">开始点名</button>
+            </div>
+        </div>
+
+        <!-- 底部统计 -->
+        <div class="stats-bar">
+            <div class="stat-item">今日: <span class="stat-value" id="today-count">0</span> / <span class="stat-value" id="total-count">0</span></div>
+            <div class="stat-item">迟到: <span class="stat-value" id="late-count">0</span></div>
+        </div>
+    </div>
+
+    <!-- 记录弹窗 -->
+    <div class="modal" id="records-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">点名记录</h2>
+                <button class="modal-close" id="close-records-btn">&times;</button>
+            </div>
+            <div class="records-list" id="records-list">
+                <!-- 动态填充 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认弹窗 -->
+    <div class="modal" id="confirm-modal">
+        <div class="modal-content">
+            <div class="confirm-dialog">
+                <p id="confirm-message">确认操作？</p>
+                <div class="confirm-buttons">
+                    <button class="btn" id="confirm-cancel">取消</button>
+                    <button class="btn btn-danger" id="confirm-ok">确认</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知 -->
+    <div class="toast" id="toast"></div>
+
+    <!-- 加载状态 -->
+    <div class="loading" id="loading">初始化中...</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script>
+        // JavaScript 代码将在后续步骤添加
+    </script>
+</body>
+</html>
