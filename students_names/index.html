@@ -957,6 +957,261 @@
                 Utils.showToast(`已导出 ${records.length} 条记录`);
             }
         };
+
+        // ==================== UIController ====================
+        const UIController = {
+            // 应用状态
+            state: 'IDLE', // IDLE, SPINNING, SHOWING_NAME, AWAITING_STATUS
+            selectedStudent: null,
+            confirmCallback: null, // 存储确认回调
+            statusMap: {
+                'normal': '正常',
+                'late': '迟到',
+                'absent': '缺勤'
+            },
+
+            // 初始化
+            init() {
+                this.bindEvents();
+                this.updateStats();
+            },
+
+            // 绑定事件
+            bindEvents() {
+                // 开始点名按钮
+                document.getElementById('start-btn').addEventListener('click', () => this.startRollCall());
+
+                // 状态选择按钮
+                document.querySelectorAll('.status-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const status = e.target.dataset.status;
+                        this.handleStatusSelect(status);
+                    });
+                });
+
+                // 导出记录
+                document.getElementById('export-btn').addEventListener('click', () => {
+                    CSVExporter.exportRecords();
+                });
+
+                // 查看记录
+                document.getElementById('view-records-btn').addEventListener('click', () => {
+                    this.showRecordsModal();
+                });
+
+                // 重置迟到
+                document.getElementById('reset-late-btn').addEventListener('click', () => {
+                    this.showConfirmModal('确认重置所有学生的迟到计数？', async () => {
+                        await DataStore.resetLateCounts();
+                        Utils.showToast('迟到计数已重置');
+                        this.updateStats();
+                    });
+                });
+
+                // 清空数据
+                document.getElementById('clear-data-btn').addEventListener('click', () => {
+                    this.showConfirmModal('确认清空所有数据？学生名单将重新初始化。', async () => {
+                        await DataStore.clearAll();
+                        Utils.showToast('数据已清空');
+                        this.updateStats();
+                    });
+                });
+
+                // 关闭记录弹窗
+                document.getElementById('close-records-btn').addEventListener('click', () => {
+                    this.closeModal('records-modal');
+                });
+
+                // 点击姓名区域取消
+                document.getElementById('student-name').addEventListener('click', () => {
+                    if (this.state === 'AWAITING_STATUS') {
+                        this.cancelSelection();
+                    }
+                });
+
+                // ESC 键处理
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        // 关闭记录弹窗
+                        this.closeModal('records-modal');
+                        // 关闭确认弹窗
+                        this.closeModal('confirm-modal');
+                        // 取消状态选择
+                        if (this.state === 'AWAITING_STATUS') {
+                            this.cancelSelection();
+                        }
+                    }
+                });
+
+                // 确认弹窗取消按钮
+                document.getElementById('confirm-cancel').addEventListener('click', () => {
+                    this.closeModal('confirm-modal');
+                    this.confirmCallback = null;
+                });
+
+                // 确认弹窗确认按钮（使用单例回调模式）
+                document.getElementById('confirm-ok').addEventListener('click', async () => {
+                    if (this.confirmCallback) {
+                        this.closeModal('confirm-modal');
+                        await this.confirmCallback();
+                        this.confirmCallback = null;
+                    }
+                });
+            },
+
+            // 开始点名
+            async startRollCall() {
+                if (this.state !== 'IDLE') return;
+
+                this.state = 'SPINNING';
+                this.setStartButtonEnabled(false);
+
+                try {
+                    // 加速地球旋转
+                    EarthRenderer.startFastSpin();
+
+                    // 随机选择学生
+                    this.selectedStudent = await RandomPicker.pickStudent();
+
+                    // 1.5秒后减速
+                    setTimeout(() => {
+                        EarthRenderer.stopFastSpin();
+                    }, 1500);
+
+                    // 2秒后显示学生姓名
+                    setTimeout(() => {
+                        this.showStudentName();
+                    }, 2000);
+
+                } catch (error) {
+                    console.error(error);
+                    Utils.showToast('点名失败：' + error.message, true);
+                    this.state = 'IDLE';
+                    this.setStartButtonEnabled(true);
+                    EarthRenderer.stopFastSpin();
+                }
+            },
+
+            // 显示学生姓名
+            showStudentName() {
+                this.state = 'SHOWING_NAME';
+
+                const nameEl = document.getElementById('student-name');
+                nameEl.textContent = this.selectedStudent.name;
+                nameEl.classList.add('show');
+
+                // 显示状态按钮
+                setTimeout(() => {
+                    this.state = 'AWAITING_STATUS';
+                    document.getElementById('status-buttons').classList.add('show');
+                }, 300);
+            },
+
+            // 处理状态选择
+            async handleStatusSelect(status) {
+                if (this.state !== 'AWAITING_STATUS') return;
+
+                // 保存记录
+                const record = {
+                    id: Utils.generateId(),
+                    studentName: this.selectedStudent.name,
+                    timestamp: Date.now(),
+                    status: status
+                };
+                await DataStore.addRecord(record);
+
+                // 更新学生迟到计数
+                if (status === 'late') {
+                    const students = await DataStore.getAllStudents();
+                    const student = students.find(s => s.id === this.selectedStudent.id);
+                    if (student) {
+                        student.lateCount = Math.min(student.lateCount + 1, 8);
+                        await DataStore.updateStudent(student);
+                    }
+                }
+
+                // 更新统计
+                this.updateStats();
+
+                // 隐藏姓名和按钮
+                document.getElementById('status-buttons').classList.remove('show');
+
+                // 2秒后淡出姓名
+                setTimeout(() => {
+                    document.getElementById('student-name').classList.remove('show');
+                    this.state = 'IDLE';
+                    this.setStartButtonEnabled(true);
+                    this.selectedStudent = null;
+
+                    Utils.showToast(`已记录：${this.statusMap[status]}`);
+                }, 2000);
+            },
+
+            // 取消选择
+            cancelSelection() {
+                document.getElementById('status-buttons').classList.remove('show');
+                document.getElementById('student-name').classList.remove('show');
+                this.state = 'IDLE';
+                this.setStartButtonEnabled(true);
+                this.selectedStudent = null;
+            },
+
+            // 设置开始按钮状态
+            setStartButtonEnabled(enabled) {
+                document.getElementById('start-btn').disabled = !enabled;
+            },
+
+            // 更新统计
+            async updateStats() {
+                const students = await DataStore.getAllStudents();
+                const todayRecords = await DataStore.getTodayRecords();
+
+                const totalCount = students.length;
+                const todayCount = todayRecords.length;
+                const lateCount = todayRecords.filter(r => r.status === 'late').length;
+
+                document.getElementById('total-count').textContent = totalCount;
+                document.getElementById('today-count').textContent = todayCount;
+                document.getElementById('late-count').textContent = lateCount;
+            },
+
+            // 显示记录弹窗
+            async showRecordsModal() {
+                const records = await DataStore.getAllRecords();
+                const listEl = document.getElementById('records-list');
+
+                if (records.length === 0) {
+                    listEl.innerHTML = '<p style="text-align: center; color: #888;">暂无记录</p>';
+                } else {
+                    listEl.innerHTML = records.map(r => `
+                        <div class="record-item">
+                            <span>${Utils.formatDateTime(r.timestamp)}</span>
+                            <span>${r.studentName}</span>
+                            <span class="record-status ${r.status}">${this.statusMap[r.status]}</span>
+                        </div>
+                    `).join('');
+                }
+
+                this.showModal('records-modal');
+            },
+
+            // 显示确认弹窗（使用单例回调模式，避免重复绑定）
+            showConfirmModal(message, onConfirm) {
+                document.getElementById('confirm-message').textContent = message;
+                this.confirmCallback = onConfirm;
+                this.showModal('confirm-modal');
+            },
+
+            // 显示弹窗
+            showModal(modalId) {
+                document.getElementById(modalId).classList.add('show');
+            },
+
+            // 关闭弹窗
+            closeModal(modalId) {
+                document.getElementById(modalId).classList.remove('show');
+            }
+        };
     </script>
 </body>
 </html>
