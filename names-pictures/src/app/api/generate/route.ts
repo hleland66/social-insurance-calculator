@@ -3,11 +3,28 @@ import { createGenerationTask } from '@/lib/nanoBananaApi';
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt } = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+
+    const { prompt } = body;
 
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json(
         { error: 'Invalid prompt' },
+        { status: 400 }
+      );
+    }
+
+    if (prompt.length > 20000) {
+      return NextResponse.json(
+        { error: 'Prompt too long (max 20000 characters)' },
         { status: 400 }
       );
     }
