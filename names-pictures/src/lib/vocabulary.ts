@@ -50,21 +50,11 @@ export function getVocabulary(theme: string): VocabularyEntry[] {
 
   // 解析词汇字符串 "拼音 汉字" 或 "汉字 pinyin"
   function parseVocabItem(item: string, category: 'core' | 'items' | 'env'): VocabularyEntry {
-    // 匹配格式：可能是 "pinyin hanzi" 或 "hanzi pinyin"
     const parts = item.trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 2) {
-      // 检测哪个是拼音（包含小写字母）和汉字
-      const hasPinyin1 = PINYIN_REGEX.test(parts[0]);
-      const hasPinyin2 = PINYIN_REGEX.test(parts[1]);
-
-      if (hasPinyin1 && !hasPinyin2) {
-        return { category, pinyin: parts[0], hanzi: parts[1] };
-      } else if (!hasPinyin1 && hasPinyin2) {
-        return { category, pinyin: parts[1], hanzi: parts[0] };
-      }
-    }
-    // 默认格式
-    return { category, pinyin: parts[0] || '', hanzi: parts[1] || parts[0] || '' };
+    // First part is hanzi, rest is pinyin
+    const hanzi = parts[0];
+    const pinyin = parts.slice(1).join(' ');
+    return { category, pinyin, hanzi };
   }
 
   vocabTheme.core.forEach(item => entries.push(parseVocabItem(item, 'core')));
