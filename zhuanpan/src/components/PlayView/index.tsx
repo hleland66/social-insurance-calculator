@@ -10,11 +10,10 @@ import { useSound } from '@/hooks/useSound';
 
 interface PlayViewProps {
   state: AppState;
-  setState: (state: AppState | ((s: AppState) => AppState)) => void;
   onBack: () => void;
 }
 
-export function PlayView({ state, setState, onBack }: PlayViewProps) {
+export function PlayView({ state, onBack }: PlayViewProps) {
   const [showResult, setShowResult] = useState(false);
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
 
@@ -32,7 +31,7 @@ export function PlayView({ state, setState, onBack }: PlayViewProps) {
   const handleSpin = async () => {
     if (!canStartPlay || isSpinning) return;
     playSpin();
-    const result = await spin();
+    await spin();
     stopSpin();
     playWin();
     setShowResult(true);

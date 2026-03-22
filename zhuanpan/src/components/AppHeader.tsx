@@ -1,5 +1,4 @@
 // src/components/AppHeader.tsx
-import React from 'react';
 
 interface AppHeaderProps {
   title: string;

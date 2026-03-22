@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { DEFAULT_STATE } from './lib/defaults';
 import { assignOptionColors } from './lib/themes';
@@ -39,7 +39,6 @@ function App() {
       ) : (
         <PlayView
           state={state}
-          setState={setState}
           onBack={() => setState(prev => ({ ...prev, viewMode: 'edit' }))}
         />
       )}
