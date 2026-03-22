@@ -980,6 +980,82 @@
                 AppState.selectedStudent = null;
             }
         };
+
+        // ==================== StudentManager ====================
+        const StudentManager = {
+            async showList() {
+                const students = await StorageService.getAllStudents();
+                const listEl = document.getElementById('student-list');
+
+                if (students.length === 0) {
+                    listEl.innerHTML = '<p style="text-align: center; color: #888;">暂无学生</p>';
+                } else {
+                    listEl.innerHTML = students.map(s => `
+                        <div class="student-item" data-id="${s.id}">
+                            <div class="student-info">
+                                <span>${s.name}</span>
+                                ${s.lateCount > 0 ? `<span class="student-late-badge">迟到${s.lateCount}次</span>` : ''}
+                            </div>
+                            <div class="student-actions">
+                                <button class="btn btn-small btn-danger" onclick="StudentManager.deleteStudent('${s.id}')">删除</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                this.showModal('students-modal');
+            },
+
+            async addStudent() {
+                const input = document.getElementById('new-student-name');
+                const name = input.value.trim();
+
+                if (!name) {
+                    Utils.showToast('请输入学生姓名', true);
+                    return;
+                }
+
+                if (name.length > 10) {
+                    Utils.showToast('姓名不能超过10个字符', true);
+                    return;
+                }
+
+                const students = await StorageService.getAllStudents();
+                if (students.some(s => s.name === name)) {
+                    Utils.showToast('该学生已存在', true);
+                    return;
+                }
+
+                await StorageService.addStudents([{
+                    id: Utils.generateId(),
+                    name: name,
+                    lateCount: 0,
+                    createdAt: Date.now()
+                }]);
+
+                input.value = '';
+                await this.showList();
+                await AppState.refreshStudents();
+                AppState.updateUI();
+                Utils.showToast('添加成功');
+            },
+
+            async deleteStudent(id) {
+                await StorageService.deleteStudent(id);
+                await this.showList();
+                await AppState.refreshStudents();
+                AppState.updateUI();
+                Utils.showToast('删除成功');
+            },
+
+            showModal(modalId) {
+                document.getElementById(modalId).classList.add('show');
+            },
+
+            closeModal(modalId) {
+                document.getElementById(modalId).classList.remove('show');
+            }
+        };
     </script>
 </body>
 </html>
