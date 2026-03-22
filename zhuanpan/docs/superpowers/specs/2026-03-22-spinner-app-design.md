@@ -15,9 +15,11 @@
 **技术栈**:
 - React 18 + TypeScript + Vite
 - Canvas 2D API 绘制转盘
-- GSAP 动画库
+- GSAP 动画库（打包时内嵌，不依赖 CDN）
 - CSS Modules / Tailwind CSS
 - localStorage 持久化
+
+**依赖策略**: 所有依赖（React、GSAP）通过 Vite 打包内嵌，生成的单文件无需外部 CDN，完全离线可用。
 
 ---
 
@@ -165,9 +167,28 @@ const calculateArcs = (options: Option[]) => {
 点击瞬间即确定结果，动画只是视觉呈现：
 
 ```typescript
+// 按权重随机选择结果
+function getRandomByWeight(options: Option[]): Option {
+  const totalWeight = options.reduce((sum, o) => sum + o.weight, 0);
+  let random = Math.random() * totalWeight;
+  for (const opt of options) {
+    random -= opt.weight;
+    if (random <= 0) return opt;
+  }
+  return options[0];
+}
+
+// 计算目标角度（确保指针停在结果扇形中央）
+function calculateTargetAngle(result: Option, options: Option[]): number {
+  const resultArc = calculateArcs(options).find(a => a.id === result.id);
+  const midAngle = (resultArc.startAngle + resultArc.endAngle) / 2;
+  // 指针固定在顶部（-90度），需要反向旋转
+  return 360 * 5 + (360 - midAngle - 90);
+}
+
 const spin = () => {
   const result = getRandomByWeight(options);  // 立即计算结果
-  const targetAngle = calculateTargetAngle(result);
+  const targetAngle = calculateTargetAngle(result, options);
   gsap.to(canvas, { rotation: targetAngle, duration: 4 });  // 动画匹配
 };
 ```
@@ -182,14 +203,32 @@ const spin = () => {
 class SpinnerRenderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
+  private rotation: number = 0;
+  private segments: Segment[] = [];
+  private theme: Theme | null = null;
 
   // 绘制转盘
   draw(segments: Segment[], theme: Theme): void {
-    segments.forEach(seg => {
+    this.segments = segments;
+    this.theme = theme;
+    this.render();
+  }
+
+  // 内部渲染方法（根据当前 rotation 重绘）
+  private render(): void {
+    const { ctx, canvas } = this;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate((this.rotation * Math.PI) / 180);
+
+    this.segments.forEach(seg => {
       this.drawSegment(seg.startAngle, seg.endAngle, seg.color);
-      this.drawLabel(seg.name, seg.midAngle, theme.textColor);
+      this.drawLabel(seg.name, seg.midAngle, this.theme.textColor);
     });
-    this.drawPointer(theme.pointerColor);
+
+    ctx.restore();
+    this.drawPointer(this.theme.pointerColor);
   }
 
   // 转动动画
@@ -197,7 +236,8 @@ class SpinnerRenderer {
     return gsap.to(this, {
       rotation: to + 360 * 5,  // 多转5圈
       duration: 4,
-      ease: "power2.out"
+      ease: "power2.out",
+      onUpdate: () => this.render()  // 每帧重绘 Canvas
     });
   }
 }
@@ -207,11 +247,17 @@ class SpinnerRenderer {
 
 ```typescript
 class SingleFileExporter {
+  // 音效文件路径（项目中的资源）
+  private readonly ASSETS = {
+    spin: '/public/spin.mp3',
+    win: '/public/win.mp3'
+  };
+
   // 生成单文件 HTML
   async export(state: AppState): Promise<Blob> {
     const template = await this.loadTemplate();
     const injected = this.injectState(template, state);
-    const embedded = this.embedAssets(injected);
+    const embedded = await this.embedAssets(injected);
     return new Blob([embedded], { type: 'text/html' });
   }
 
@@ -221,14 +267,38 @@ class SingleFileExporter {
     return template.replace('</head>', stateScript + '</head>');
   }
 
-  // 内嵌资源（音效 Base64）
-  private embedAssets(html: string): string {
-    return html
-      .replace('src="./spin.mp3"', `src="${this.base64('./spin.mp3')}"`)
-      .replace('src="./win.mp3"', `src="${this.base64('./win.mp3')}"`);
+  // 读取文件并转换为 Base64
+  private async fileToBase64(path: string): Promise<string> {
+    const response = await fetch(path);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // 内嵌资源（音效转为 Base64）
+  private async embedAssets(html: string): Promise<string> {
+    try {
+      const spinBase64 = await this.fileToBase64(this.ASSETS.spin);
+      const winBase64 = await this.fileToBase64(this.ASSETS.win);
+      return html
+        .replace('src="./spin.mp3"', `src="${spinBase64}"`)
+        .replace('src="./win.mp3"', `src="${winBase64}"`);
+    } catch (e) {
+      console.warn('Failed to embed audio files:', e);
+      return html; // 失败时返回原始 HTML
+    }
   }
 }
 ```
+
+**音效文件要求**:
+- 格式：MP3，建议比特率 128kbps
+- 大小：单个文件 < 100KB
+- 时长：spin.mp3 约 2-3 秒循环音，win.mp3 约 1 种提示音
 
 ### 5.3 主题系统
 
@@ -254,6 +324,27 @@ class SingleFileExporter {
 2. Minimal - 极简黑白灰，高对比度
 3. Pastel - 马卡龙色系，清新明亮
 4. Warm - 暖色调，温馨治愈
+
+**颜色分配算法**:
+每个主题包含一个固定调色板（12 种颜色），按顺序分配给选项：
+
+```typescript
+const THEME_PALETTES: Record<ThemeId, string[]> = {
+  morandi: ['#A8B5C4', '#B8C5D4', '#C8D5E4', '#D8E5F4', ...],
+  minimal: ['#2D3436', '#636E72', '#B2BEC3', '#DFE6E9', ...],
+  pastel: ['#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7', ...],
+  warm: ['#FF6B6B', '#FFA07A', '#FFD93D', '#6BCB77', ...]
+};
+
+// 为选项分配颜色
+function assignOptionColors(options: Option[], theme: ThemeId): Option[] {
+  const palette = THEME_PALETTES[theme];
+  return options.map((opt, i) => ({
+    ...opt,
+    color: palette[i % palette.length]  // 循环使用调色板
+  }));
+}
+```
 
 ---
 
@@ -283,7 +374,7 @@ const canStartPlay = (state: AppState): boolean => {
 
 - 离线文件打开时，检测是否有 `__INITIAL_STATE__`
 - 兼容无 localStorage 环境（降级为内存状态）
-- CDN 失败时优雅降容（无动画但有基本功能）
+- 由于所有依赖已内嵌，无需 CDN 降容处理
 
 ### 6.4 导出异常处理
 
