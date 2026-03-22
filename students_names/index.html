@@ -1056,6 +1056,135 @@
                 document.getElementById(modalId).classList.remove('show');
             }
         };
+
+        // ==================== RecordManager ====================
+        const RecordManager = {
+            statusMap: {
+                'normal': '正常',
+                'late': '迟到',
+                'absent': '缺勤'
+            },
+
+            async showList() {
+                const records = await StorageService.getAllRecords();
+                const listEl = document.getElementById('records-list');
+
+                if (records.length === 0) {
+                    listEl.innerHTML = '<p style="text-align: center; color: #888;">暂无记录</p>';
+                } else {
+                    listEl.innerHTML = records.map(r => `
+                        <div class="record-item">
+                            <span>${Utils.formatDateTime(r.timestamp)}</span>
+                            <span>${r.studentName}</span>
+                            <span class="record-status ${r.status}">${this.statusMap[r.status]}</span>
+                        </div>
+                    `).join('');
+                }
+
+                this.showModal('records-modal');
+            },
+
+            async exportCSV() {
+                const records = await StorageService.getAllRecords();
+                if (records.length === 0) {
+                    Utils.showToast('没有记录可导出', true);
+                    return;
+                }
+
+                let csv = '时间,姓名,状态\n';
+                for (const record of records) {
+                    const time = Utils.formatDateTime(record.timestamp);
+                    const status = this.statusMap[record.status] || record.status;
+                    csv += `${time},${record.studentName},${status}\n`;
+                }
+
+                const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `点名记录_${Utils.getTodayString()}.csv`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                Utils.showToast(`已导出 ${records.length} 条记录`);
+            },
+
+            showModal(modalId) {
+                document.getElementById(modalId).classList.add('show');
+            },
+
+            closeModal(modalId) {
+                document.getElementById(modalId).classList.remove('show');
+            }
+        };
+
+        // ==================== ConfirmDialog ====================
+        const ConfirmDialog = {
+            callback: null,
+
+            show(message, onConfirm) {
+                document.getElementById('confirm-message').textContent = message;
+                this.callback = onConfirm;
+                this.showModal('confirm-modal');
+            },
+
+            async confirm() {
+                if (this.callback) {
+                    this.closeModal('confirm-modal');
+                    await this.callback();
+                    this.callback = null;
+                }
+            },
+
+            cancel() {
+                this.closeModal('confirm-modal');
+                this.callback = null;
+            },
+
+            showModal(modalId) {
+                document.getElementById(modalId).classList.add('show');
+            },
+
+            closeModal(modalId) {
+                document.getElementById(modalId).classList.remove('show');
+            }
+        };
+
+        // ==================== App ====================
+        const App = {
+            async init() {
+                await StorageService.init();
+                await AppState.refreshStudents();
+                await AppState.refreshTodayRecords();
+                SpinnerController.init();
+                this.bindEvents();
+                AppState.updateUI();
+                document.getElementById('loading').style.display = 'none';
+            },
+
+            bindEvents() {
+                document.getElementById('start-btn').addEventListener('click', () => RollCallController.start());
+                document.getElementById('manage-students-btn').addEventListener('click', () => StudentManager.showList());
+                document.getElementById('add-student-btn').addEventListener('click', () => StudentManager.addStudent());
+                document.getElementById('new-student-name').addEventListener('keypress', (e) => { if (e.key === 'Enter') StudentManager.addStudent(); });
+                document.getElementById('view-records-btn').addEventListener('click', () => RecordManager.showList());
+                document.getElementById('export-btn').addEventListener('click', () => RecordManager.exportCSV());
+                document.getElementById('reset-late-btn').addEventListener('click', () => ConfirmDialog.show('确认重置所有学生的迟到计数？', async () => { await StorageService.resetLateCounts(); await AppState.refreshStudents(); AppState.updateUI(); Utils.showToast('迟到计数已重置'); }));
+                document.getElementById('clear-data-btn').addEventListener('click', () => ConfirmDialog.show('确认清空所有数据？学生名单将重新初始化。', async () => { await StorageService.clearAll(); await AppState.refreshStudents(); await AppState.refreshTodayRecords(); AppState.updateUI(); Utils.showToast('数据已清空'); }));
+                document.querySelectorAll('.status-btn').forEach(btn => { btn.addEventListener('click', (e) => { const status = e.target.dataset.status; RollCallController.handleStatus(status); }); });
+                document.getElementById('close-students-btn').addEventListener('click', () => StudentManager.closeModal('students-modal'));
+                document.getElementById('close-records-btn').addEventListener('click', () => RecordManager.closeModal('records-modal'));
+                document.getElementById('confirm-cancel').addEventListener('click', () => ConfirmDialog.cancel());
+                document.getElementById('confirm-ok').addEventListener('click', () => ConfirmDialog.confirm());
+                document.getElementById('student-name').addEventListener('click', () => { if (AppState.phase === 'SELECTING') RollCallController.cancel(); });
+                document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { StudentManager.closeModal('students-modal'); RecordManager.closeModal('records-modal'); ConfirmDialog.cancel(); if (AppState.phase === 'SELECTING') RollCallController.cancel(); } });
+                document.querySelectorAll('.modal').forEach(modal => { modal.addEventListener('click', (e) => { if (e.target === modal) { modal.classList.remove('show'); ConfirmDialog.callback = null; } }); });
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => App.init());
     </script>
 </body>
 </html>
