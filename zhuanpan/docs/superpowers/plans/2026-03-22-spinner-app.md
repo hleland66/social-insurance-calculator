@@ -462,6 +462,7 @@ import { calculateArcs, getRandomByWeight, calculateTargetAngle, canStartPlay } 
 export function useSpinner(options: Option[]) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
+  const [rotation, setRotation] = useState(0);  // 暴露 rotation 状态
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rotationRef = useRef(0);
 
@@ -478,10 +479,8 @@ export function useSpinner(options: Option[]) {
         duration: 4,
         ease: 'power2.out',
         onUpdate: () => {
-          // 触发 Canvas 重绘
-          if (canvasRef.current) {
-            drawSpinner(canvasRef.current, options, rotationRef.current);
-          }
+          // 更新 rotation 状态，触发 SpinnerCanvas 重绘
+          setRotation(rotationRef.current);
         },
         onComplete: () => {
           setIsSpinning(false);
@@ -495,63 +494,11 @@ export function useSpinner(options: Option[]) {
   return {
     isSpinning,
     lastResult,
+    rotation,  // 返回 rotation 状态
     canvasRef,
     spin,
     canStartPlay: canStartPlay(options)
   };
-}
-
-// Canvas 绘制函数（将在 SpinnerCanvas 组件中使用）
-function drawSpinner(
-  canvas: HTMLCanvasElement,
-  options: Option[],
-  rotation: number
-) {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  const segments = calculateArcs(options);
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  const radius = Math.min(centerX, centerY) - 10;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.save();
-  ctx.translate(centerX, centerY);
-  ctx.rotate((rotation * Math.PI) / 180);
-
-  segments.forEach(seg => {
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, radius,
-      (seg.startAngle * Math.PI) / 180,
-      (seg.endAngle * Math.PI) / 180
-    );
-    ctx.closePath();
-    ctx.fillStyle = seg.color;
-    ctx.fill();
-
-    // 绘制文字
-    ctx.save();
-    ctx.rotate((seg.midAngle * Math.PI) / 180);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.fillText(seg.name, radius * 0.65, 0);
-    ctx.restore();
-  });
-
-  ctx.restore();
-
-  // 绘制指针（固定在顶部）
-  ctx.beginPath();
-  ctx.moveTo(centerX, 10);
-  ctx.lineTo(centerX - 10, 30);
-  ctx.lineTo(centerX + 10, 30);
-  ctx.closePath();
-  ctx.fillStyle = '#2D3436';
-  ctx.fill();
 }
 ```
 
@@ -1453,11 +1400,11 @@ interface PlayViewProps {
 }
 
 export function PlayView({ state, setState, onBack }: PlayViewProps) {
-  const [rotation, setRotation] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
 
-  const { isSpinning, lastResult, canvasRef, spin, canStartPlay } = useSpinner(state.options);
+  // 从 useSpinner 获取 rotation 状态
+  const { isSpinning, lastResult, rotation, canvasRef, spin, canStartPlay } = useSpinner(state.options);
   const { playSpin, stopSpin, playWin } = useSound(state.soundEnabled);
 
   // 同步 canvas ref
@@ -1484,15 +1431,6 @@ export function PlayView({ state, setState, onBack }: PlayViewProps) {
   const handleCloseResult = () => {
     setShowResult(false);
   };
-
-  // 计算 rotation 用于显示
-  useEffect(() => {
-    // 从 useSpinner 的 rotationRef 获取当前值
-    const interval = setInterval(() => {
-      // 这里需要从 useSpinner 暴露 rotation
-    }, 16);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div style={{
@@ -1555,8 +1493,37 @@ git commit -m "feat: add PlayView container component"
 
 **Files:**
 - Create: `src/lib/exporter.ts`
+- Create: `public/index.html.template`
 
-- [ ] **Step 1: 创建导出器**
+- [ ] **Step 1: 创建 HTML 模板文件**
+
+将 `index.html` 复制为模板：
+
+```bash
+cp index.html public/index.html.template
+```
+
+在模板中标记注入位置：
+
+```html
+<!-- public/index.html.template -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>自定义转盘</title>
+    <!-- __STATE_INJECT_POINT__ -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+- [ ] **Step 2: 创建导出器**
 
 ```typescript
 // src/lib/exporter.ts
@@ -1564,7 +1531,7 @@ import { AppState } from '@/types';
 
 export class SingleFileExporter {
   async export(state: AppState): Promise<void> {
-    // 读取构建后的 HTML 模板
+    // 读取模板
     const template = await this.loadTemplate();
     const injected = this.injectState(template, state);
     const embedded = await this.embedAssets(injected);
@@ -1580,18 +1547,23 @@ export class SingleFileExporter {
   }
 
   private async loadTemplate(): Promise<string> {
-    const response = await fetch('/index.html');
+    // 使用公共的模板文件
+    const response = await fetch('/index.html.template');
+    if (!response.ok) {
+      throw new Error('Failed to load template');
+    }
     return await response.text();
   }
 
   private injectState(template: string, state: AppState): string {
     const stateScript = `<script>window.__INITIAL_STATE__=${JSON.stringify(state)}<\/script>`;
-    return template.replace('</head>', stateScript + '</head>');
+    return template.replace('<!-- __STATE_INJECT_POINT__ -->', stateScript);
   }
 
   private async fileToBase64(path: string): Promise<string> {
     try {
       const response = await fetch(path);
+      if (!response.ok) return '';
       const blob = await response.blob();
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -1628,11 +1600,11 @@ export class SingleFileExporter {
 export const exporter = new SingleFileExporter();
 ```
 
-- [ ] **Step 2: 提交**
+- [ ] **Step 3: 提交**
 
 ```bash
-git add src/lib/exporter.ts
-git commit -m "feat: add single file exporter"
+git add public/index.html.template src/lib/exporter.ts
+git commit -m "feat: add single file exporter with template"
 ```
 
 ---
@@ -1710,42 +1682,51 @@ git commit -m "feat: implement App component with view switching"
 
 ## Phase 9: 音效资源
 
-### Task 9.1: 添加占位音效文件
+### Task 9.1: 添加音效文件
 
 **Files:**
 - Create: `public/spin.mp3`
 - Create: `public/win.mp3`
 
-- [ ] **Step 1: 添加音效文件**
+- [ ] **Step 1: 下载或创建音效文件**
 
-由于音效文件需要真实音频，这里提供两种方案：
+推荐音效来源（免费商用）：
 
-**方案 A：使用在线音效**
+**spin.mp3（转动音效）**：
+- 来源：Freesound.org 或 Pixabay
+- 搜索关键词："wheel spin", "clicking", "ratchet"
+- 要求：2-3 秒循环，< 100KB，MP3 格式
+- 或使用此在线工具生成：https://www.myinstants.com/
+
+**win.mp3（中奖音效）**：
+- 来源：同上
+- 搜索关键词："ding", "chime", "success", "bell"
+- 要求：1 秒左右，< 50KB，清脆提示音
+
+下载后放置到 `public/` 目录：
 ```bash
-# 下载音效到 public 目录
-# spin.mp3: 转动时的循环音效（2-3秒）
-# win.mp3: 中奖提示音（1秒）
+# 将下载的文件重命名并移动到 public 目录
+mv ~/Downloads/spin.mp3 public/spin.mp3
+mv ~/Downloads/win.mp3 public/win.mp3
 ```
 
-**方案 B：临时静音处理**
-暂时创建空文件，后续替换真实音效：
+- [ ] **Step 2: 验证文件**
 
 ```bash
-# 创建空占位文件
-touch public/spin.mp3 public/win.mp3
+ls -lh public/*.mp3
+# 确认文件存在且大小合理
 ```
-
-- [ ] **Step 2: 添加真实音效（用户自行准备）**
-
-推荐音效来源：
-- spin.mp3: 轻柔的齿轮转动声或白噪音
-- win.mp3: 清脆的铃音或"叮"声
 
 - [ ] **Step 3: 提交**
 
 ```bash
 git add public/spin.mp3 public/win.mp3
 git commit -m "feat: add audio effect files"
+```
+
+**注意**：如果暂时没有音效文件，可以创建空文件作为占位，应用会优雅降级（静默运行）：
+```bash
+touch public/spin.mp3 public/win.mp3
 ```
 
 ---
@@ -1784,11 +1765,25 @@ npm run dev
 - 移动端视图
 - 桌面端视图
 
-- [ ] **Step 6: 提交修复**
+- [ ] **Step 6: 记录和修复问题**
 
 ```bash
+# 创建 bug 记录文件
+cat > BUGS.md << 'EOF'
+# 测试发现的问题
+
+## 阻塞性问题
+- [ ] 问题描述
+- [ ] 问题描述
+
+## 次要问题
+- [ ] 问题描述
+EOF
+
+# 逐个修复问题
+# 每修复一个问题，提交一次：
 git add .
-git commit -m "fix: address issues found during testing"
+git commit -m "fix: resolve specific issue found in testing"
 ```
 
 ### Task 10.2: 性能优化
