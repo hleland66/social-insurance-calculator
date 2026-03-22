@@ -774,6 +774,77 @@
                 }
             }
         };
+
+        // ==================== PickerService ====================
+        const PickerService = {
+            // 计算学生权重
+            calculateWeight(student) {
+                const baseWeight = 1;
+                const lateWeight = 1 + (student.lateCount * 0.5);
+                return Math.min(lateWeight, 5);
+            },
+
+            // 加权随机选择
+            async pickStudent() {
+                const students = await StorageService.getAllStudents();
+                if (students.length === 0) {
+                    throw new Error('没有学生数据');
+                }
+
+                // 计算所有学生权重
+                const weights = students.map(s => this.calculateWeight(s));
+                const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+                // 生成随机数
+                let random = Math.random() * totalWeight;
+
+                // 选择学生
+                for (let i = 0; i < students.length; i++) {
+                    random -= weights[i];
+                    if (random <= 0) {
+                        return students[i];
+                    }
+                }
+
+                return students[students.length - 1];
+            }
+        };
+
+        // ==================== AppState ====================
+        const AppState = {
+            // 应用状态
+            phase: 'IDLE', // IDLE, SPINNING, SHOWING, SELECTING
+            selectedStudent: null,
+            students: [],
+            todayRecords: [],
+
+            // 状态转换
+            setPhase(newPhase) {
+                this.phase = newPhase;
+                this.updateUI();
+            },
+
+            // 更新学生列表
+            async refreshStudents() {
+                this.students = await StorageService.getAllStudents();
+            },
+
+            // 更新今日记录
+            async refreshTodayRecords() {
+                this.todayRecords = await StorageService.getTodayRecords();
+            },
+
+            // 更新 UI
+            updateUI() {
+                // 更新统计
+                document.getElementById('total-count').textContent = this.students.length;
+                document.getElementById('today-count').textContent = this.todayRecords.length;
+                document.getElementById('late-count').textContent = this.todayRecords.filter(r => r.status === 'late').length;
+
+                // 更新开始按钮状态
+                document.getElementById('start-btn').disabled = (this.phase !== 'IDLE');
+            }
+        };
     </script>
 </body>
 </html>
