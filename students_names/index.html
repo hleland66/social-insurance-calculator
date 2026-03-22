@@ -845,6 +845,141 @@
                 document.getElementById('start-btn').disabled = (this.phase !== 'IDLE');
             }
         };
+
+        // ==================== SpinnerController ====================
+        const SpinnerController = {
+            spinner: null,
+            nameElement: null,
+            statusButtons: null,
+
+            init() {
+                this.spinner = document.getElementById('spinner');
+                this.nameElement = document.getElementById('student-name');
+                this.statusButtons = document.getElementById('status-buttons');
+            },
+
+            startSpin() {
+                this.spinner.classList.add('fast');
+                this.nameElement.classList.remove('show');
+                this.statusButtons.classList.remove('show');
+            },
+
+            stopSpin() {
+                this.spinner.classList.remove('fast');
+                this.spinner.classList.add('stopping');
+
+                // 动画结束后移除 stopping 类
+                setTimeout(() => {
+                    this.spinner.classList.remove('stopping');
+                }, 1000);
+            },
+
+            showName(name) {
+                this.nameElement.textContent = name;
+                this.nameElement.classList.add('show');
+            },
+
+            showStatusButtons() {
+                this.statusButtons.classList.add('show');
+            },
+
+            hideAll() {
+                this.nameElement.classList.remove('show');
+                this.statusButtons.classList.remove('show');
+            }
+        };
+
+        // ==================== RollCallController ====================
+        const RollCallController = {
+            statusMap: {
+                'normal': '正常',
+                'late': '迟到',
+                'absent': '缺勤'
+            },
+
+            async start() {
+                if (AppState.phase !== 'IDLE') return;
+
+                AppState.setPhase('SPINNING');
+                SpinnerController.startSpin();
+
+                try {
+                    // 选择学生
+                    AppState.selectedStudent = await PickerService.pickStudent();
+
+                    // 1.5秒后停止旋转
+                    setTimeout(() => {
+                        SpinnerController.stopSpin();
+                    }, 1500);
+
+                    // 2.5秒后显示姓名
+                    setTimeout(() => {
+                        this.showStudent();
+                    }, 2500);
+
+                } catch (error) {
+                    console.error(error);
+                    Utils.showToast('点名失败：' + error.message, true);
+                    AppState.setPhase('IDLE');
+                    SpinnerController.stopSpin();
+                }
+            },
+
+            showStudent() {
+                AppState.setPhase('SHOWING');
+                SpinnerController.showName(AppState.selectedStudent.name);
+
+                // 显示状态按钮
+                setTimeout(() => {
+                    AppState.setPhase('SELECTING');
+                    SpinnerController.showStatusButtons();
+                }, 300);
+            },
+
+            async handleStatus(status) {
+                if (AppState.phase !== 'SELECTING') return;
+
+                // 保存记录
+                const record = {
+                    id: Utils.generateId(),
+                    studentId: AppState.selectedStudent.id,
+                    studentName: AppState.selectedStudent.name,
+                    timestamp: Date.now(),
+                    status: status
+                };
+                await StorageService.addRecord(record);
+
+                // 更新学生迟到计数
+                if (status === 'late') {
+                    const student = AppState.students.find(s => s.id === AppState.selectedStudent.id);
+                    if (student) {
+                        student.lateCount = Math.min(student.lateCount + 1, 8);
+                        await StorageService.updateStudent(student);
+                    }
+                }
+
+                // 更新统计
+                await AppState.refreshTodayRecords();
+                await AppState.refreshStudents();
+                AppState.updateUI();
+
+                // 隐藏界面
+                SpinnerController.hideAll();
+
+                // 2秒后重置状态
+                setTimeout(() => {
+                    AppState.setPhase('IDLE');
+                    AppState.selectedStudent = null;
+                    Utils.showToast(`已记录：${this.statusMap[status]}`);
+                }, 2000);
+            },
+
+            cancel() {
+                SpinnerController.hideAll();
+                AppState.setPhase('IDLE');
+                AppState.selectedStudent = null;
+            }
+        };
     </script>
 </body>
 </html>
