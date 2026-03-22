@@ -14,6 +14,7 @@ const config: Config = {
         accent: '#FFE66D',
         background: '#FFF5F8',
         surface: '#FFFFFF',
+        text: '#2D3436',
       },
     },
   },
