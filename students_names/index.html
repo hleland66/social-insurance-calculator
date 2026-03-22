@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>课堂点名器</title>
+    <title>快速点名器</title>
     <style>
+        /* 全局样式 */
         * {
             margin: 0;
             padding: 0;
@@ -19,6 +20,7 @@
             overflow: hidden;
         }
 
+        /* 布局容器 */
         #app {
             display: flex;
             flex-direction: column;
@@ -74,16 +76,62 @@
             position: relative;
         }
 
-        /* 地球容器 */
-        #earth-container {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
+        /* 旋转动画容器 */
+        #spinner-container {
+            width: 200px;
+            height: 200px;
+            position: relative;
         }
 
-        /* 姓名显示区 */
+        .spinner {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 0deg,
+                #6366f1 0deg,
+                #8b5cf6 90deg,
+                #6366f1 180deg,
+                #8b5cf6 270deg,
+                #6366f1 360deg
+            );
+            animation: spin 3s linear infinite;
+        }
+
+        .spinner.fast {
+            animation: spin 0.3s linear infinite;
+        }
+
+        .spinner.stopping {
+            animation: spin-stop 1s ease-out forwards;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes spin-stop {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(1080deg); }
+        }
+
+        /* 内圆 */
+        .spinner-inner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: #1a1a2e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 姓名显示 */
         .name-display {
             position: absolute;
             top: 50%;
@@ -251,6 +299,66 @@
             cursor: pointer;
         }
 
+        /* 学生列表项 */
+        .student-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .student-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .student-info {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .student-late-badge {
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 12px;
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .student-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* 添加学生表单 */
+        .add-student-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .add-student-form input {
+            flex: 1;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .add-student-form input:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
         /* 记录列表 */
         .records-list {
             max-height: 400px;
@@ -338,16 +446,22 @@
     <div id="app">
         <!-- 工具栏 -->
         <div class="toolbar">
-            <button class="btn" id="export-btn">导出记录</button>
+            <button class="btn" id="start-btn">开始点名</button>
+            <button class="btn" id="manage-students-btn">名单管理</button>
             <button class="btn" id="view-records-btn">查看记录</button>
+            <button class="btn" id="export-btn">导出记录</button>
             <button class="btn" id="reset-late-btn">重置迟到</button>
             <button class="btn btn-danger" id="clear-data-btn">清空数据</button>
         </div>
 
         <!-- 主内容区 -->
         <div class="main-content">
-            <!-- 地球容器 -->
-            <div id="earth-container"></div>
+            <!-- 旋转动画 -->
+            <div id="spinner-container">
+                <div class="spinner" id="spinner">
+                    <div class="spinner-inner"></div>
+                </div>
+            </div>
 
             <!-- 姓名显示 -->
             <div class="name-display">
@@ -358,17 +472,29 @@
                     <button class="status-btn absent" data-status="absent">缺勤</button>
                 </div>
             </div>
-
-            <!-- 主按钮 -->
-            <div class="main-button-container">
-                <button id="start-btn">开始点名</button>
-            </div>
         </div>
 
         <!-- 底部统计 -->
         <div class="stats-bar">
             <div class="stat-item">今日: <span class="stat-value" id="today-count">0</span> / <span class="stat-value" id="total-count">0</span></div>
             <div class="stat-item">迟到: <span class="stat-value" id="late-count">0</span></div>
+        </div>
+    </div>
+
+    <!-- 名单管理弹窗 -->
+    <div class="modal" id="students-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">学生名单</h2>
+                <button class="modal-close" id="close-students-btn">&times;</button>
+            </div>
+            <div class="add-student-form">
+                <input type="text" id="new-student-name" placeholder="输入学生姓名" maxlength="10">
+                <button class="btn" id="add-student-btn">添加</button>
+            </div>
+            <div class="student-list" id="student-list">
+                <!-- 动态填充 -->
+            </div>
         </div>
     </div>
 
@@ -404,850 +530,8 @@
     <!-- 加载状态 -->
     <div class="loading" id="loading">初始化中...</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     <script>
-        // ==================== Mock Data ====================
-        const MOCK_STUDENTS = [
-            "张伟", "李娜", "王芳", "刘洋", "陈杰",
-            "杨秀英", "赵强", "黄敏", "周涛", "吴磊",
-            "徐静", "孙红", "马超", "朱丽", "胡勇",
-            "郭丹", "何平", "罗琳", "林峰", "高明"
-        ];
-
-        // ==================== Utils ====================
-        const Utils = {
-            // 生成 UUID
-            generateId() {
-                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-                    const r = Math.random() * 16 | 0;
-                    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-                    return v.toString(16);
-                });
-            },
-
-            // 格式化日期时间
-            formatDateTime(timestamp) {
-                const date = new Date(timestamp);
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                const hours = String(date.getHours()).padStart(2, '0');
-                const minutes = String(date.getMinutes()).padStart(2, '0');
-                const seconds = String(date.getSeconds()).padStart(2, '0');
-                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-            },
-
-            // 获取今日日期字符串
-            getTodayString() {
-                const date = new Date();
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                return `${year}-${month}-${day}`;
-            },
-
-            // 显示通知
-            showToast(message, isError = false) {
-                const toast = document.getElementById('toast');
-                toast.textContent = message;
-                toast.className = isError ? 'toast show error' : 'toast show';
-                setTimeout(() => {
-                    toast.className = 'toast';
-                }, 3000);
-            }
-        };
-
-        // ==================== DataStore ====================
-        const DataStore = {
-            dbName: 'ClassRollCallDB',
-            dbVersion: 1,
-            db: null,
-            useLocalStorage: false,
-
-            // 初始化数据库
-            async init() {
-                try {
-                    const request = indexedDB.open(this.dbName, this.dbVersion);
-
-                    return new Promise((resolve, reject) => {
-                        request.onerror = () => {
-                            console.warn('IndexedDB 不可用，降级到 localStorage');
-                            this.useLocalStorage = true;
-                            this.initLocalStorage();
-                            resolve();
-                        };
-
-                        request.onsuccess = (e) => {
-                            this.db = e.target.result;
-                            // 初始化模拟数据
-                            this.initMockData().then(resolve);
-                        };
-
-                        request.onupgradeneeded = (e) => {
-                            const db = e.target.result;
-
-                            // 创建 students 对象存储
-                            if (!db.objectStoreNames.contains('students')) {
-                                const studentStore = db.createObjectStore('students', { keyPath: 'id' });
-                                studentStore.createIndex('name', 'name', { unique: false });
-                                studentStore.createIndex('lateCount', 'lateCount', { unique: false });
-                            }
-
-                            // 创建 records 对象存储
-                            if (!db.objectStoreNames.contains('records')) {
-                                const recordStore = db.createObjectStore('records', { keyPath: 'id' });
-                                recordStore.createIndex('timestamp', 'timestamp', { unique: false });
-                                recordStore.createIndex('studentName', 'studentName', { unique: false });
-                            }
-                        };
-                    });
-                } catch (error) {
-                    console.warn('IndexedDB 初始化失败，降级到 localStorage', error);
-                    this.useLocalStorage = true;
-                    this.initLocalStorage();
-                    this.initMockData();
-                }
-            },
-
-            // 初始化 localStorage 模拟
-            initLocalStorage() {
-                if (!localStorage.getItem('students')) {
-                    localStorage.setItem('students', JSON.stringify([]));
-                }
-                if (!localStorage.getItem('records')) {
-                    localStorage.setItem('records', JSON.stringify([]));
-                }
-            },
-
-            // 初始化模拟数据
-            async initMockData() {
-                const students = await this.getAllStudents();
-                if (students.length === 0) {
-                    const now = Date.now();
-                    const mockData = MOCK_STUDENTS.map(name => ({
-                        id: Utils.generateId(),
-                        name: name,
-                        lateCount: 0,
-                        createdDate: now
-                    }));
-                    await this.addStudents(mockData);
-                    console.log(`已初始化 ${mockData.length} 名学生`);
-                }
-            },
-
-            // IndexedDB 通用操作方法
-            async idbOperation(storeName, mode, operation) {
-                return new Promise((resolve, reject) => {
-                    const transaction = this.db.transaction(storeName, mode);
-                    const store = transaction.objectStore(storeName);
-                    const request = operation(store);
-
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                });
-            },
-
-            // 添加学生
-            async addStudents(students) {
-                if (this.useLocalStorage) {
-                    const existing = JSON.parse(localStorage.getItem('students') || '[]');
-                    const updated = [...existing, ...students];
-                    localStorage.setItem('students', JSON.stringify(updated));
-                    return;
-                }
-
-                for (const student of students) {
-                    await this.idbOperation('students', 'readwrite', store => store.add(student));
-                }
-            },
-
-            // 获取所有学生
-            async getAllStudents() {
-                if (this.useLocalStorage) {
-                    return JSON.parse(localStorage.getItem('students') || '[]');
-                }
-
-                return this.idbOperation('students', 'readonly', store => {
-                    return store.getAll();
-                });
-            },
-
-            // 更新学生
-            async updateStudent(student) {
-                if (this.useLocalStorage) {
-                    const students = JSON.parse(localStorage.getItem('students') || '[]');
-                    const index = students.findIndex(s => s.id === student.id);
-                    if (index !== -1) {
-                        students[index] = student;
-                        localStorage.setItem('students', JSON.stringify(students));
-                    }
-                    return;
-                }
-
-                await this.idbOperation('students', 'readwrite', store => store.put(student));
-            },
-
-            // 添加记录
-            async addRecord(record) {
-                if (this.useLocalStorage) {
-                    const records = JSON.parse(localStorage.getItem('records') || '[]');
-                    records.push(record);
-                    localStorage.setItem('records', JSON.stringify(records));
-                    return;
-                }
-
-                await this.idbOperation('records', 'readwrite', store => store.add(record));
-            },
-
-            // 获取所有记录
-            async getAllRecords() {
-                if (this.useLocalStorage) {
-                    return JSON.parse(localStorage.getItem('records') || '[]');
-                }
-
-                const records = await this.idbOperation('records', 'readonly', store => store.getAll());
-                return records.sort((a, b) => b.timestamp - a.timestamp);
-            },
-
-            // 获取今日记录（使用高效的日期比较）
-            async getTodayRecords() {
-                const allRecords = await this.getAllRecords();
-                const now = new Date();
-                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-                const todayEnd = todayStart + 24 * 60 * 60 * 1000;
-
-                return allRecords.filter(r => r.timestamp >= todayStart && r.timestamp < todayEnd);
-            },
-
-            // 清空所有数据
-            async clearAll() {
-                if (this.useLocalStorage) {
-                    localStorage.removeItem('students');
-                    localStorage.removeItem('records');
-                    await this.initMockData();
-                    return;
-                }
-
-                await this.idbOperation('students', 'readwrite', store => store.clear());
-                await this.idbOperation('records', 'readwrite', store => store.clear());
-                await this.initMockData();
-            },
-
-            // 重置迟到计数
-            async resetLateCounts() {
-                const students = await this.getAllStudents();
-                for (const student of students) {
-                    student.lateCount = 0;
-                    await this.updateStudent(student);
-                }
-            }
-        };
-
-        // ==================== RandomPicker ====================
-        const RandomPicker = {
-            // 计算学生权重（上限为5）
-            calculateWeight(student) {
-                const baseWeight = 1;
-                const lateWeight = 1 + (student.lateCount * 0.5);
-                return Math.min(lateWeight, 5);
-            },
-
-            // 加权随机选择
-            async pickStudent() {
-                const students = await DataStore.getAllStudents();
-                if (students.length === 0) {
-                    throw new Error('没有学生数据');
-                }
-
-                // 计算所有学生权重
-                const weights = students.map(s => this.calculateWeight(s));
-                const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-
-                // 生成随机数
-                let random = Math.random() * totalWeight;
-
-                // 选择学生
-                for (let i = 0; i < students.length; i++) {
-                    random -= weights[i];
-                    if (random <= 0) {
-                        return students[i];
-                    }
-                }
-
-                return students[students.length - 1];
-            }
-        };
-
-        // ==================== EarthRenderer ====================
-        const EarthRenderer = {
-            scene: null,
-            camera: null,
-            renderer: null,
-            earth: null,
-            normalSpeed: 0.001,
-            fastSpeed: 0.01,
-            currentSpeed: 0.001,
-            targetSpeed: 0.001,
-            animationId: null,
-            lastFrameTime: 0,
-            frameCount: 0,
-            fps: 60,
-            lowQualityMode: false,
-
-            // 初始化 Three.js 场景
-            init() {
-                try {
-                    const container = document.getElementById('earth-container');
-                    const width = container.clientWidth;
-                    const height = container.clientHeight;
-
-                    // 创建场景
-                    this.scene = new THREE.Scene();
-
-                    // 创建相机
-                    this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-                    this.camera.position.z = 6;
-
-                    // 创建渲染器
-                    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-                    this.renderer.setSize(width, height);
-                    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-                    container.appendChild(this.renderer.domElement);
-
-                    // 创建地球
-                    this.createEarth();
-
-                    // 添加灯光
-                    this.addLights();
-
-                    // 监听窗口大小变化
-                    window.addEventListener('resize', () => this.onResize());
-
-                    // 开始动画循环
-                    this.animate();
-
-                } catch (error) {
-                    console.error('Three.js 初始化失败:', error);
-                    Utils.showToast('3D 渲染初始化失败，使用简化模式', true);
-                    this.initFallback();
-                }
-            },
-
-            // 降级到 CSS 动画模式
-            initFallback() {
-                const container = document.getElementById('earth-container');
-                container.innerHTML = '<div class="earth-fallback"></div>';
-
-                // 检查是否已添加样式（避免重复）
-                if (!document.getElementById('fallback-style')) {
-                    const style = document.createElement('style');
-                    style.id = 'fallback-style';
-                    style.textContent = `
-                        .earth-fallback {
-                            width: 300px;
-                            height: 300px;
-                            border-radius: 50%;
-                            background: radial-gradient(circle at 30% 30%, #3b82f6, #1e40af, #0f172a);
-                            position: absolute;
-                            top: 50%;
-                            left: 50%;
-                            transform: translate(-50%, -50%);
-                            animation: earthRotate 30s linear infinite;
-                            box-shadow: 0 0 60px rgba(59, 130, 246, 0.5),
-                                       inset -30px -30px 60px rgba(0, 0, 0, 0.4),
-                                       inset 10px 10px 30px rgba(255, 255, 255, 0.1);
-                        }
-                        @keyframes earthRotate {
-                            from { transform: translate(-50%, -50%) rotateY(0deg); }
-                            to { transform: translate(-50%, -50%) rotateY(360deg); }
-                        }
-                    `;
-                    document.head.appendChild(style);
-                }
-
-                // 覆盖动画方法（空操作，CSS 动画持续运行）
-                this.startFastSpin = () => {};
-                this.stopFastSpin = () => {};
-                this.dispose = () => {};
-            },
-
-            // 创建地球（程序生成网格纹理）
-            createEarth() {
-                const geometry = new THREE.SphereGeometry(2, 64, 64);
-
-                // 生成网格纹理
-                const canvas = document.createElement('canvas');
-                canvas.width = 1024;
-                canvas.height = 512;
-                const ctx = canvas.getContext('2d');
-
-                // 背景渐变
-                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                gradient.addColorStop(0, '#1e3a5f');
-                gradient.addColorStop(0.5, '#2563eb');
-                gradient.addColorStop(1, '#1e3a5f');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // 绘制经纬线网格
-                ctx.strokeStyle = 'rgba(147, 197, 253, 0.3)';
-                ctx.lineWidth = 1;
-
-                // 经线
-                for (let i = 0; i < 24; i++) {
-                    ctx.beginPath();
-                    const x = (i / 24) * canvas.width;
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, canvas.height);
-                    ctx.stroke();
-                }
-
-                // 纬线
-                for (let i = 0; i < 12; i++) {
-                    ctx.beginPath();
-                    const y = (i / 12) * canvas.height;
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(canvas.width, y);
-                    ctx.stroke();
-                }
-
-                // 随机添加一些"大陆"色块
-                ctx.fillStyle = 'rgba(34, 197, 94, 0.2)';
-                for (let i = 0; i < 15; i++) {
-                    const x = Math.random() * canvas.width;
-                    const y = Math.random() * canvas.height;
-                    const size = 30 + Math.random() * 80;
-                    ctx.beginPath();
-                    ctx.arc(x, y, size, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                const texture = new THREE.CanvasTexture(canvas);
-
-                const material = new THREE.MeshPhongMaterial({
-                    map: texture,
-                    shininess: 25,
-                    transparent: true,
-                    opacity: 0.9
-                });
-
-                this.earth = new THREE.Mesh(geometry, material);
-                this.scene.add(this.earth);
-            },
-
-            // 添加灯光
-            addLights() {
-                // 环境光
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-                this.scene.add(ambientLight);
-
-                // 点光源
-                const pointLight = new THREE.PointLight(0xffffff, 1);
-                pointLight.position.set(5, 5, 5);
-                this.scene.add(pointLight);
-            },
-
-            // 窗口大小变化
-            onResize() {
-                const container = document.getElementById('earth-container');
-                const width = container.clientWidth;
-                const height = container.clientHeight;
-
-                this.camera.aspect = width / height;
-                this.camera.updateProjectionMatrix();
-                this.renderer.setSize(width, height);
-            },
-
-            // 动画循环
-            animate(currentTime = 0) {
-                this.animationId = requestAnimationFrame((t) => this.animate(t));
-
-                // FPS 监控
-                this.frameCount++;
-                if (currentTime - this.lastFrameTime >= 1000) {
-                    this.fps = this.frameCount;
-                    this.frameCount = 0;
-                    this.lastFrameTime = currentTime;
-
-                    // 低性能检测：FPS 持续低于 30，启用低质量模式
-                    if (this.fps < 30 && !this.lowQualityMode && this.renderer) {
-                        this.lowQualityMode = true;
-                        this.renderer.setPixelRatio(1);
-                        console.log('检测到低性能设备，已降低渲染质量');
-                    }
-                }
-
-                // 平滑过渡到目标速度
-                this.currentSpeed += (this.targetSpeed - this.currentSpeed) * 0.05;
-
-                // 旋转地球
-                if (this.earth) {
-                    this.earth.rotation.y += this.currentSpeed;
-                }
-
-                if (this.renderer) {
-                    this.renderer.render(this.scene, this.camera);
-                }
-            },
-
-            // 开始加速旋转
-            startFastSpin() {
-                this.targetSpeed = this.fastSpeed;
-            },
-
-            // 停止加速旋转
-            stopFastSpin() {
-                this.targetSpeed = this.normalSpeed;
-            },
-
-            // 清理资源
-            dispose() {
-                if (this.animationId) {
-                    cancelAnimationFrame(this.animationId);
-                }
-
-                if (this.earth) {
-                    this.earth.geometry.dispose();
-                    this.earth.material.dispose();
-                }
-
-                if (this.renderer) {
-                    this.renderer.dispose();
-                }
-            }
-        };
-
-        // ==================== CSVExporter ====================
-        const CSVExporter = {
-            // 导出记录为 CSV
-            async exportRecords() {
-                const records = await DataStore.getAllRecords();
-                if (records.length === 0) {
-                    Utils.showToast('没有记录可导出', true);
-                    return;
-                }
-
-                // 生成 CSV 内容
-                let csv = '时间,姓名,状态\n';
-
-                // 状态映射
-                const statusMap = {
-                    'normal': '正常',
-                    'late': '迟到',
-                    'absent': '缺勤'
-                };
-
-                for (const record of records) {
-                    const time = Utils.formatDateTime(record.timestamp);
-                    const status = statusMap[record.status] || record.status;
-                    csv += `${time},${record.studentName},${status}\n`;
-                }
-
-                // 创建 Blob 并下载
-                const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `点名记录_${Utils.getTodayString()}.csv`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-
-                Utils.showToast(`已导出 ${records.length} 条记录`);
-            }
-        };
-
-        // ==================== UIController ====================
-        const UIController = {
-            // 应用状态
-            state: 'IDLE', // IDLE, SPINNING, SHOWING_NAME, AWAITING_STATUS
-            selectedStudent: null,
-            confirmCallback: null, // 存储确认回调
-            statusMap: {
-                'normal': '正常',
-                'late': '迟到',
-                'absent': '缺勤'
-            },
-
-            // 初始化
-            init() {
-                this.bindEvents();
-                this.updateStats();
-            },
-
-            // 绑定事件
-            bindEvents() {
-                // 开始点名按钮
-                document.getElementById('start-btn').addEventListener('click', () => this.startRollCall());
-
-                // 状态选择按钮
-                document.querySelectorAll('.status-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const status = e.target.dataset.status;
-                        this.handleStatusSelect(status);
-                    });
-                });
-
-                // 导出记录
-                document.getElementById('export-btn').addEventListener('click', () => {
-                    CSVExporter.exportRecords();
-                });
-
-                // 查看记录
-                document.getElementById('view-records-btn').addEventListener('click', () => {
-                    this.showRecordsModal();
-                });
-
-                // 重置迟到
-                document.getElementById('reset-late-btn').addEventListener('click', () => {
-                    this.showConfirmModal('确认重置所有学生的迟到计数？', async () => {
-                        await DataStore.resetLateCounts();
-                        Utils.showToast('迟到计数已重置');
-                        this.updateStats();
-                    });
-                });
-
-                // 清空数据
-                document.getElementById('clear-data-btn').addEventListener('click', () => {
-                    this.showConfirmModal('确认清空所有数据？学生名单将重新初始化。', async () => {
-                        await DataStore.clearAll();
-                        Utils.showToast('数据已清空');
-                        this.updateStats();
-                    });
-                });
-
-                // 关闭记录弹窗
-                document.getElementById('close-records-btn').addEventListener('click', () => {
-                    this.closeModal('records-modal');
-                });
-
-                // 点击姓名区域取消
-                document.getElementById('student-name').addEventListener('click', () => {
-                    if (this.state === 'AWAITING_STATUS') {
-                        this.cancelSelection();
-                    }
-                });
-
-                // ESC 键处理
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') {
-                        // 关闭记录弹窗
-                        this.closeModal('records-modal');
-                        // 关闭确认弹窗
-                        this.closeModal('confirm-modal');
-                        // 取消状态选择
-                        if (this.state === 'AWAITING_STATUS') {
-                            this.cancelSelection();
-                        }
-                    }
-                });
-
-                // 确认弹窗取消按钮
-                document.getElementById('confirm-cancel').addEventListener('click', () => {
-                    this.closeModal('confirm-modal');
-                    this.confirmCallback = null;
-                });
-
-                // 确认弹窗确认按钮（使用单例回调模式）
-                document.getElementById('confirm-ok').addEventListener('click', async () => {
-                    if (this.confirmCallback) {
-                        this.closeModal('confirm-modal');
-                        await this.confirmCallback();
-                        this.confirmCallback = null;
-                    }
-                });
-            },
-
-            // 开始点名
-            async startRollCall() {
-                if (this.state !== 'IDLE') return;
-
-                this.state = 'SPINNING';
-                this.setStartButtonEnabled(false);
-
-                try {
-                    // 加速地球旋转
-                    EarthRenderer.startFastSpin();
-
-                    // 随机选择学生
-                    this.selectedStudent = await RandomPicker.pickStudent();
-
-                    // 1.5秒后减速
-                    setTimeout(() => {
-                        EarthRenderer.stopFastSpin();
-                    }, 1500);
-
-                    // 2秒后显示学生姓名
-                    setTimeout(() => {
-                        this.showStudentName();
-                    }, 2000);
-
-                } catch (error) {
-                    console.error(error);
-                    Utils.showToast('点名失败：' + error.message, true);
-                    this.state = 'IDLE';
-                    this.setStartButtonEnabled(true);
-                    EarthRenderer.stopFastSpin();
-                }
-            },
-
-            // 显示学生姓名
-            showStudentName() {
-                this.state = 'SHOWING_NAME';
-
-                const nameEl = document.getElementById('student-name');
-                nameEl.textContent = this.selectedStudent.name;
-                nameEl.classList.add('show');
-
-                // 显示状态按钮
-                setTimeout(() => {
-                    this.state = 'AWAITING_STATUS';
-                    document.getElementById('status-buttons').classList.add('show');
-                }, 300);
-            },
-
-            // 处理状态选择
-            async handleStatusSelect(status) {
-                if (this.state !== 'AWAITING_STATUS') return;
-
-                // 保存记录
-                const record = {
-                    id: Utils.generateId(),
-                    studentName: this.selectedStudent.name,
-                    timestamp: Date.now(),
-                    status: status
-                };
-                await DataStore.addRecord(record);
-
-                // 更新学生迟到计数
-                if (status === 'late') {
-                    const students = await DataStore.getAllStudents();
-                    const student = students.find(s => s.id === this.selectedStudent.id);
-                    if (student) {
-                        student.lateCount = Math.min(student.lateCount + 1, 8);
-                        await DataStore.updateStudent(student);
-                    }
-                }
-
-                // 更新统计
-                this.updateStats();
-
-                // 隐藏姓名和按钮
-                document.getElementById('status-buttons').classList.remove('show');
-
-                // 2秒后淡出姓名
-                setTimeout(() => {
-                    document.getElementById('student-name').classList.remove('show');
-                    this.state = 'IDLE';
-                    this.setStartButtonEnabled(true);
-                    this.selectedStudent = null;
-
-                    Utils.showToast(`已记录：${this.statusMap[status]}`);
-                }, 2000);
-            },
-
-            // 取消选择
-            cancelSelection() {
-                document.getElementById('status-buttons').classList.remove('show');
-                document.getElementById('student-name').classList.remove('show');
-                this.state = 'IDLE';
-                this.setStartButtonEnabled(true);
-                this.selectedStudent = null;
-            },
-
-            // 设置开始按钮状态
-            setStartButtonEnabled(enabled) {
-                document.getElementById('start-btn').disabled = !enabled;
-            },
-
-            // 更新统计
-            async updateStats() {
-                const students = await DataStore.getAllStudents();
-                const todayRecords = await DataStore.getTodayRecords();
-
-                const totalCount = students.length;
-                const todayCount = todayRecords.length;
-                const lateCount = todayRecords.filter(r => r.status === 'late').length;
-
-                document.getElementById('total-count').textContent = totalCount;
-                document.getElementById('today-count').textContent = todayCount;
-                document.getElementById('late-count').textContent = lateCount;
-            },
-
-            // 显示记录弹窗
-            async showRecordsModal() {
-                const records = await DataStore.getAllRecords();
-                const listEl = document.getElementById('records-list');
-
-                if (records.length === 0) {
-                    listEl.innerHTML = '<p style="text-align: center; color: #888;">暂无记录</p>';
-                } else {
-                    listEl.innerHTML = records.map(r => `
-                        <div class="record-item">
-                            <span>${Utils.formatDateTime(r.timestamp)}</span>
-                            <span>${r.studentName}</span>
-                            <span class="record-status ${r.status}">${this.statusMap[r.status]}</span>
-                        </div>
-                    `).join('');
-                }
-
-                this.showModal('records-modal');
-            },
-
-            // 显示确认弹窗（使用单例回调模式，避免重复绑定）
-            showConfirmModal(message, onConfirm) {
-                document.getElementById('confirm-message').textContent = message;
-                this.confirmCallback = onConfirm;
-                this.showModal('confirm-modal');
-            },
-
-            // 显示弹窗
-            showModal(modalId) {
-                document.getElementById(modalId).classList.add('show');
-            },
-
-            // 关闭弹窗
-            closeModal(modalId) {
-                document.getElementById(modalId).classList.remove('show');
-            }
-        };
-
-        // ==================== App ====================
-        const App = {
-            // 初始化应用
-            async init() {
-                try {
-                    // 初始化数据存储
-                    await DataStore.init();
-
-                    // 初始化地球渲染
-                    EarthRenderer.init();
-
-                    // 初始化 UI 控制器
-                    UIController.init();
-
-                    // 隐藏加载状态
-                    document.getElementById('loading').style.display = 'none';
-
-                    console.log('应用初始化完成');
-
-                } catch (error) {
-                    console.error('应用初始化失败:', error);
-                    document.getElementById('loading').textContent = '初始化失败，请刷新页面重试';
-                }
-            }
-        };
-
-        // 页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            App.init();
-        });
-
-        // 页面卸载时清理资源
-        window.addEventListener('beforeunload', () => {
-            EarthRenderer.dispose();
-        });
+        // JavaScript 代码将在后续任务中添加
     </script>
 </body>
 </html>
