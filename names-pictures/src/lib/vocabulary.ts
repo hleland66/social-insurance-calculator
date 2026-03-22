@@ -1,5 +1,7 @@
 import type { VocabularyTheme, VocabularyEntry } from '@/types';
 
+const PINYIN_REGEX = /[a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/;
+
 export const THEME_VOCABULARY: Record<string, VocabularyTheme> = {
   超市: {
     core: ['收银台 shōu yín tái', '货架 huò jià', '购物车 gòu wù chē', '收银员 shōu yín yuán'],
@@ -49,11 +51,11 @@ export function getVocabulary(theme: string): VocabularyEntry[] {
   // 解析词汇字符串 "拼音 汉字" 或 "汉字 pinyin"
   function parseVocabItem(item: string, category: 'core' | 'items' | 'env'): VocabularyEntry {
     // 匹配格式：可能是 "pinyin hanzi" 或 "hanzi pinyin"
-    const parts = item.trim().split(/\s+/);
+    const parts = item.trim().split(/\s+/).filter(Boolean);
     if (parts.length === 2) {
       // 检测哪个是拼音（包含小写字母）和汉字
-      const hasPinyin1 = /[a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(parts[0]);
-      const hasPinyin2 = /[a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(parts[1]);
+      const hasPinyin1 = PINYIN_REGEX.test(parts[0]);
+      const hasPinyin2 = PINYIN_REGEX.test(parts[1]);
 
       if (hasPinyin1 && !hasPinyin2) {
         return { category, pinyin: parts[0], hanzi: parts[1] };
