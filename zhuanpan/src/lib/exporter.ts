@@ -1,5 +1,5 @@
 // src/lib/exporter.ts
-import { AppState } from '@/types';
+import type { AppState } from '@/types';
 
 export class SingleFileExporter {
   async export(state: AppState): Promise<void> {

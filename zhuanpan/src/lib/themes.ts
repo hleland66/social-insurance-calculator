@@ -1,5 +1,5 @@
 // src/lib/themes.ts
-import { Theme, ThemeId, Option } from '@/types';
+import type { Theme, ThemeId, Option } from '@/types';
 
 export const THEMES: Record<ThemeId, Theme> = {
   morandi: {

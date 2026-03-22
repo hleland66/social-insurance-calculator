@@ -1,5 +1,4 @@
 // src/components/ConfigView/ExportButton.tsx
-import React from 'react';
 
 interface ExportButtonProps {
   onExport: () => void;

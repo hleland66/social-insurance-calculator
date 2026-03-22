@@ -1,6 +1,6 @@
 // src/components/PlayView/index.tsx
-import React, { useState, useEffect } from 'react';
-import { AppState } from '@/types';
+import { useState, useEffect } from 'react';
+import type { AppState } from '@/types';
 import { SpinnerCanvas } from './SpinnerCanvas';
 import { SpinButton } from './SpinButton';
 import { ResultModal } from './ResultModal';

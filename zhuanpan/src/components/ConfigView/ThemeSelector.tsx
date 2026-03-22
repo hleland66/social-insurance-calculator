@@ -1,6 +1,5 @@
 // src/components/ConfigView/ThemeSelector.tsx
-import React from 'react';
-import { ThemeId } from '@/types';
+import type { ThemeId } from '@/types';
 import { THEMES } from '@/lib/themes';
 
 interface ThemeSelectorProps {

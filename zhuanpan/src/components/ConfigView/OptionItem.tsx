@@ -1,6 +1,5 @@
 // src/components/ConfigView/OptionItem.tsx
-import React from 'react';
-import { Option } from '@/types';
+import type { Option } from '@/types';
 
 interface OptionItemProps {
   option: Option;

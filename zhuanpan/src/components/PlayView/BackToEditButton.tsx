@@ -1,5 +1,4 @@
 // src/components/PlayView/BackToEditButton.tsx
-import React from 'react';
 
 interface BackToEditButtonProps {
   onBack: () => void;

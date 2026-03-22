@@ -1,5 +1,4 @@
 // src/components/PlayView/SpinButton.tsx
-import React from 'react';
 
 interface SpinButtonProps {
   isSpinning: boolean;

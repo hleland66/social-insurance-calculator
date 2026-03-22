@@ -1,6 +1,6 @@
 // src/components/PlayView/SpinnerCanvas.tsx
-import React, { useEffect, useRef } from 'react';
-import { Option } from '@/types';
+import { useEffect, useRef } from 'react';
+import type { Option } from '@/types';
 import { calculateArcs } from '@/lib/spinner';
 
 interface SpinnerCanvasProps {

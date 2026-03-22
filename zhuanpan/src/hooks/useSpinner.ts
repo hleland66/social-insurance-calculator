@@ -1,8 +1,8 @@
 // src/hooks/useSpinner.ts
 import { useState, useRef, useCallback } from 'react';
 import { gsap } from 'gsap';
-import { Option } from '@/types';
-import { calculateArcs, getRandomByWeight, calculateTargetAngle, canStartPlay } from '@/lib/spinner';
+import type { Option } from '@/types';
+import { getRandomByWeight, calculateTargetAngle, canStartPlay } from '@/lib/spinner';
 
 export function useSpinner(options: Option[]) {
   const [isSpinning, setIsSpinning] = useState(false);

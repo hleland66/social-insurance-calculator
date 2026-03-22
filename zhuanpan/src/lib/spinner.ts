@@ -1,5 +1,5 @@
 // src/lib/spinner.ts
-import { Option, Segment } from '@/types';
+import type { Option, Segment } from '@/types';
 
 export function calculateArcs(options: Option[]): Segment[] {
   const totalWeight = options.reduce((sum, o) => sum + o.weight, 0);

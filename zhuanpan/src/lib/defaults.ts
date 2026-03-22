@@ -1,5 +1,5 @@
 // src/lib/defaults.ts
-import { AppState, Option } from '@/types';
+import type { AppState, Option } from '@/types';
 import { assignOptionColors } from './themes';
 
 const defaultOptions: Option[] = [

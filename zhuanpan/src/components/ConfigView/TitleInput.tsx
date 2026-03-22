@@ -1,5 +1,4 @@
 // src/components/ConfigView/TitleInput.tsx
-import React from 'react';
 
 interface TitleInputProps {
   value: string;

@@ -1,5 +1,4 @@
 // src/components/PlayView/ResultModal.tsx
-import React from 'react';
 
 interface ResultModalProps {
   result: string | null;

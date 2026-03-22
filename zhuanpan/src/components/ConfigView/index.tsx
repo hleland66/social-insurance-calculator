@@ -1,6 +1,5 @@
 // src/components/ConfigView/index.tsx
-import React from 'react';
-import { AppState } from '@/types';
+import type { AppState } from '@/types';
 import { canStartPlay } from '@/lib/spinner';
 import { TitleInput } from './TitleInput';
 import { OptionList } from './OptionList';
