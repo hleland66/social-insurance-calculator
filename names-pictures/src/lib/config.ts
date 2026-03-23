@@ -7,6 +7,7 @@ export const CONFIG = {
 
   // 本地存储 key
   STORAGE_KEY: 'literacy_news_history',
+  STORAGE_KEY_API: 'literacy_news_api_key',
 
   // 历史记录限制
   MAX_HISTORY: 50,
