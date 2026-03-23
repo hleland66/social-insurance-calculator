@@ -67,17 +67,18 @@ create table results (
 
 ### 计算流程
 
-1. 从 salaries 表读取数据
-2. 按 employee_id 分组
-3. 过滤对应年份数据
-4. 计算年度月平均工资：`avg_salary = 总和 / 月份数`
-5. 获取城市标准（base_min, base_max, rate）
-6. 计算缴费基数：
+1. 用户选择要计算的城市（从已上传的 cities 表中选择）
+2. 从 salaries 表读取所有员工数据
+3. 按 employee_id 分组
+4. 根据所选城市的 year 过滤对应年份数据
+5. 计算年度月平均工资：`avg_salary = 总和 / 月份数`
+6. 获取所选城市的标准（base_min, base_max, rate）
+7. 计算缴费基数：
    - avg_salary < base_min → base_min
    - avg_salary > base_max → base_max
    - 否则 → avg_salary
-7. 计算公司缴费：`company_fee = contribution_base × rate`
-8. 清空 results 表，写入新结果
+8. 计算公司缴费：`company_fee = contribution_base × rate`
+9. 清空 results 表，写入新结果（关联所选城市）
 
 ### 数据规则
 
@@ -103,6 +104,23 @@ create table results (
 }
 ```
 
+### GET /api/cities
+
+获取可用的城市列表（用于页面下拉框）。
+
+**响应：**
+```typescript
+{
+  success: true,
+  data: {
+    cities: Array<{
+      city_name: string;
+      year: string;
+    }>
+  }
+}
+```
+
 ### POST /api/calculate
 
 执行社保计算。
@@ -110,7 +128,8 @@ create table results (
 **请求：**
 ```typescript
 {
-  city_name: string
+  city_name: string;
+  year: string;
 }
 ```
 
@@ -119,8 +138,29 @@ create table results (
 {
   success: true,
   data: {
-    calculated: number,
-    results?: Result[]
+    calculated: number
+  }
+}
+```
+
+### GET /api/results
+
+获取计算结果。
+
+**响应：**
+```typescript
+{
+  success: true,
+  data: {
+    results: Array<{
+      employee_id: string;
+      employee_name: string;
+      city_name: string;
+      year: string;
+      avg_salary: number;
+      contribution_base: number;
+      company_fee: number;
+    }>
   }
 }
 ```
@@ -136,6 +176,7 @@ create table results (
 ### 上传页面 `/upload`
 
 - 文件上传区（拖拽 + 点击选择）
+- 城市选择下拉框（从数据库中的 cities 表加载，上传成功后自动更新）
 - 两个操作按钮：[上传数据]、[执行计算]
 - 状态提示：loading、成功、失败
 
@@ -155,7 +196,9 @@ social-insurance-calculator/
 │   ├── results/page.tsx
 │   └── api/
 │       ├── upload/route.ts
-│       └── calculate/route.ts
+│       ├── cities/route.ts
+│       ├── calculate/route.ts
+│       └── results/route.ts
 ├── components/
 │   ├── FileUploader.tsx
 │   └── ResultTable.tsx
