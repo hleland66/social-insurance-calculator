@@ -1,14 +1,14 @@
-import type { CreateTaskRequest, CreateTaskResponse, TaskDetailResponse } from '@/types';
+import type { ImageGenerationRequest, ImageGenerationResponse } from '@/types';
 import { CONFIG } from './config';
 
 const API_BASE = CONFIG.apiUrl;
 
-async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
+async function apiRequest<T>(endpoint: string, apiKey: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${CONFIG.apiKey}`,
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
       ...options?.headers,
     },
@@ -21,71 +21,28 @@ async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T
   return response.json();
 }
 
-export async function createGenerationTask(prompt: string): Promise<string> {
-  const payload: CreateTaskRequest = {
+export async function generateImage(prompt: string, apiKey: string): Promise<string> {
+  const payload: ImageGenerationRequest = {
     model: CONFIG.model,
-    input: {
-      prompt,
-      aspect_ratio: CONFIG.aspectRatio,
-      resolution: CONFIG.resolution,
-      output_format: CONFIG.outputFormat,
-    },
+    prompt,
+    size: CONFIG.size,
+    aspect_ratio: CONFIG.aspectRatio,
+    response_format: CONFIG.responseFormat as 'url' | 'b64_json',
   };
 
-  const response = await apiRequest<CreateTaskResponse>(
-    '/api/v1/jobs/createTask',
+  const response = await apiRequest<ImageGenerationResponse>(
+    '/v1/images/generations',
+    apiKey,
     {
       method: 'POST',
       body: JSON.stringify(payload),
     }
   );
 
-  if (response.code !== 200) {
-    throw new Error(`Failed to create task: code ${response.code}`);
+  // V-API 直接返回图片 URL
+  if (!response.data?.[0]?.url) {
+    throw new Error('No image URL returned');
   }
 
-  return response.data.taskId;
-}
-
-export async function getTaskDetail(taskId: string): Promise<TaskDetailResponse['data']> {
-  const response = await apiRequest<TaskDetailResponse>(
-    `/api/v1/jobs/getTaskDetail?taskId=${taskId}`
-  );
-
-  if (response.code !== 200) {
-    throw new Error(`Failed to get task detail: code ${response.code}`);
-  }
-
-  return response.data;
-}
-
-export async function pollTaskCompletion(
-  taskId: string,
-  onProgress?: (status: string) => void
-): Promise<string> {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < CONFIG.maxPollTime) {
-    const detail = await getTaskDetail(taskId);
-
-    if (onProgress) {
-      onProgress(detail.status);
-    }
-
-    if (detail.status === 'completed') {
-      if (!detail.result?.imageUrl) {
-        throw new Error('Task completed but no image URL returned');
-      }
-      return detail.result.imageUrl;
-    }
-
-    if (detail.status === 'failed') {
-      throw new Error('Task generation failed');
-    }
-
-    // 等待后重试
-    await new Promise(resolve => setTimeout(resolve, CONFIG.pollInterval));
-  }
-
-  throw new Error('Task polling timeout');
+  return response.data[0].url;
 }
