@@ -2,6 +2,22 @@ import type { HistoryItem } from '@/types';
 import { CONFIG } from './config';
 
 const STORAGE_KEY = CONFIG.STORAGE_KEY;
+const STORAGE_KEY_API = CONFIG.STORAGE_KEY_API;
+
+// API Key 管理
+export function getApiKey(): string {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(STORAGE_KEY_API) || '';
+}
+
+export function setApiKey(key: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(STORAGE_KEY_API, key);
+}
+
+export function hasApiKey(): boolean {
+  return getApiKey().length > 0;
+}
 
 export function loadHistory(): HistoryItem[] {
   if (typeof window === 'undefined') return [];
