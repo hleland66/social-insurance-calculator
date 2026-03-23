@@ -13,5 +13,4 @@ export const CONFIG = {
 
   // API 配置
   apiUrl: process.env.V_API_URL || 'https://api.gpt.ge',
-  apiKey: process.env.V_API_KEY || '',
 };
