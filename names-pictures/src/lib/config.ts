@@ -13,5 +13,5 @@ export const CONFIG = {
   MAX_HISTORY: 50,
 
   // API 配置
-  apiUrl: process.env.V_API_URL || 'https://api.gpt.ge',
+  apiUrl: process.env.V_API_URL || 'https://api.v3.cm',
 };

@@ -46,7 +46,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         <div className="mb-6">
           <label htmlFor="api-key-input" className="block text-sm font-medium text-gray-700 mb-2">
-            V-API Key
+            API Key
           </label>
           <div className="relative">
             <input
@@ -55,7 +55,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               type={isVisible ? 'text' : 'password'}
               value={apiKey}
               onChange={(e) => setApiKeyInput(e.target.value)}
-              placeholder="请输入你的 V-API Key"
+              placeholder="请输入你的 API Key"
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-24"
               autoComplete="off"
             />
@@ -77,7 +77,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             <strong>获取 API Key：</strong>
           </p>
           <ol className="text-sm text-blue-700 mt-2 list-decimal list-inside space-y-1">
-            <li>访问 <a href="https://api.gpt.ge" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900">api.gpt.ge</a></li>
+            <li>访问 <a href="https://api.v3.cm/" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900">api.v3.cm</a></li>
             <li>注册/登录账号</li>
             <li>在控制台获取 API Key</li>
           </ol>
