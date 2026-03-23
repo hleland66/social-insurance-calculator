@@ -32,36 +32,29 @@ export interface AppState {
   title: string;
   vocabulary: VocabularyEntry[];
   generatedPrompt: string;
-  taskId: string | null;
   resultUrl: string | null;
   error: string | null;
 }
 
-// Nano Banana API 请求
-export interface CreateTaskRequest {
+// V-API 请求
+export interface ImageGenerationRequest {
   model: string;
-  input: {
-    prompt: string;
-    aspect_ratio: string;
-    resolution: string;
-    output_format: string;
-  };
+  prompt: string;
+  size: string;
+  aspect_ratio?: string;
+  response_format?: 'url' | 'b64_json';
 }
 
-// Nano Banana API 响应
-export interface CreateTaskResponse {
-  code: number;
-  data: {
-    taskId: string;
-  };
-}
-
-export interface TaskDetailResponse {
-  code: number;
-  data: {
-    status: 'pending' | 'processing' | 'completed' | 'failed';
-    result?: {
-      imageUrl: string;
-    };
+// V-API 响应
+export interface ImageGenerationResponse {
+  created: number;
+  data: Array<{
+    url?: string;
+    b64_json?: string;
+  }>;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    total_tokens: number;
   };
 }
