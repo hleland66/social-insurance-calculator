@@ -1,19 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getAvailableThemes } from '@/lib/vocabulary';
 
 interface InputStepProps {
   onSubmit: (theme: string, title: string) => void;
 }
 
+// 主题对应的默认标题
+const getDefaultTitle = (theme: string): string => {
+  const titleMap: Record<string, string> = {
+    '超市': '走进超市',
+    '医院': '探秘医院',
+    '公园': '游逛公园',
+    '学校': '我的学校',
+    '动物园': '动物园之旅',
+    '消防站': '小小消防员',
+  };
+  return titleMap[theme] || `走进${theme}`;
+};
+
 export default function InputStep({ onSubmit }: InputStepProps) {
   const [theme, setTheme] = useState('超市');
   const [customTheme, setCustomTheme] = useState('');
   const [title, setTitle] = useState('走进超市');
+  const [isTitleManuallyEdited, setIsTitleManuallyEdited] = useState(false);
 
   const availableThemes = getAvailableThemes();
   const isCustomTheme = theme === 'custom';
+
+  // 当主题改变且用户未手动修改过标题时，自动更新标题
+  useEffect(() => {
+    if (!isCustomTheme && !isTitleManuallyEdited) {
+      setTitle(getDefaultTitle(theme));
+    }
+  }, [theme, isCustomTheme, isTitleManuallyEdited]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +44,18 @@ export default function InputStep({ onSubmit }: InputStepProps) {
     if (!finalTheme) return;
 
     onSubmit(finalTheme, finalTitle);
+  };
+
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
+    // 切换主题时重置手动编辑标志
+    setIsTitleManuallyEdited(false);
+  };
+
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle);
+    // 用户手动编辑标题时，标记为已编辑
+    setIsTitleManuallyEdited(true);
   };
 
   return (
@@ -36,7 +69,7 @@ export default function InputStep({ onSubmit }: InputStepProps) {
             id="theme-select"
             name="theme"
             value={theme}
-            onChange={(e) => setTheme(e.target.value)}
+            onChange={(e) => handleThemeChange(e.target.value)}
             className="input-field"
           >
             {availableThemes.map(t => (
@@ -73,7 +106,7 @@ export default function InputStep({ onSubmit }: InputStepProps) {
             name="title"
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="为小报起个名字..."
             className="input-field"
           />
