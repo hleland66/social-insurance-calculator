@@ -45,16 +45,19 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="api-key-input" className="block text-sm font-medium text-gray-700 mb-2">
             V-API Key
           </label>
           <div className="relative">
             <input
+              id="api-key-input"
+              name="api-key"
               type={isVisible ? 'text' : 'password'}
               value={apiKey}
               onChange={(e) => setApiKeyInput(e.target.value)}
               placeholder="请输入你的 V-API Key"
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-24"
+              autoComplete="off"
             />
             <button
               type="button"

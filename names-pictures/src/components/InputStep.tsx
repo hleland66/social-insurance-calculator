@@ -29,10 +29,12 @@ export default function InputStep({ onSubmit }: InputStepProps) {
     <div className="max-w-md mx-auto">
       <form onSubmit={handleSubmit} className="card space-y-6">
         <div>
-          <label className="block text-lg font-semibold mb-3 text-gray-700">
+          <label htmlFor="theme-select" className="block text-lg font-semibold mb-3 text-gray-700">
             选择主题/场景 🎯
           </label>
           <select
+            id="theme-select"
+            name="theme"
             value={theme}
             onChange={(e) => setTheme(e.target.value)}
             className="input-field"
@@ -46,10 +48,12 @@ export default function InputStep({ onSubmit }: InputStepProps) {
 
         {isCustomTheme && (
           <div>
-            <label className="block text-lg font-semibold mb-3 text-gray-700">
+            <label htmlFor="custom-theme-input" className="block text-lg font-semibold mb-3 text-gray-700">
               自定义主题 ✏️
             </label>
             <input
+              id="custom-theme-input"
+              name="custom-theme"
               type="text"
               value={customTheme}
               onChange={(e) => setCustomTheme(e.target.value)}
@@ -61,10 +65,12 @@ export default function InputStep({ onSubmit }: InputStepProps) {
         )}
 
         <div>
-          <label className="block text-lg font-semibold mb-3 text-gray-700">
+          <label htmlFor="title-input" className="block text-lg font-semibold mb-3 text-gray-700">
             小报标题 📝
           </label>
           <input
+            id="title-input"
+            name="title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
