@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createGenerationTask } from '@/lib/nanoBananaApi';
+import { generateImage } from '@/lib/nanoBananaApi';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { prompt } = body;
+    const { prompt, apiKey } = body;
 
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json(
@@ -22,20 +22,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (prompt.length > 20000) {
+    if (!apiKey || typeof apiKey !== 'string') {
       return NextResponse.json(
-        { error: 'Prompt too long (max 20000 characters)' },
+        { error: 'API Key is required. Please configure it in settings.' },
         { status: 400 }
       );
     }
 
-    // 创建生成任务
-    const taskId = await createGenerationTask(prompt);
+    if (prompt.length > 32768) {
+      return NextResponse.json(
+        { error: 'Prompt too long (max 32768 tokens)' },
+        { status: 400 }
+      );
+    }
 
-    // 返回任务 ID，客户端将轮询结果
+    // V-API 直接返回图片 URL
+    const imageUrl = await generateImage(prompt, apiKey);
+
     return NextResponse.json({
       code: 200,
-      data: { taskId }
+      data: { imageUrl }
     });
 
   } catch (error) {
