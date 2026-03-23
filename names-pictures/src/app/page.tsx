@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { AppStep, HistoryItem } from '@/types';
+import type { AppStep, HistoryItem, VocabularyEntry } from '@/types';
 import { getVocabulary } from '@/lib/vocabulary';
 import { generatePrompt } from '@/lib/prompt';
 import { addHistoryItem, deleteHistoryItem, clearHistory, loadHistory, getApiKey } from '@/lib/storage';
@@ -17,7 +17,7 @@ export default function HomePage() {
   const [currentStep, setCurrentStep] = useState<AppStep>('input');
   const [theme, setTheme] = useState('');
   const [title, setTitle] = useState('');
-  const [vocabulary, setVocabulary] = useState<any[]>([]);
+  const [vocabulary, setVocabulary] = useState<VocabularyEntry[]>([]);
   const [prompt, setPrompt] = useState('');
   const [resultUrl, setResultUrl] = useState('');
   const [progress, setProgress] = useState(0);

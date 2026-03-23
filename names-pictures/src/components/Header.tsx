@@ -30,6 +30,7 @@ export default function Header({ onOpenHistory, onOpenSettings, historyCount }: 
           <button
             onClick={onOpenHistory}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary/10 text-secondary hover:bg-secondary/20 transition-colors"
+            aria-label="打开历史记录"
           >
             <span className="text-lg">📚</span>
             <span className="hidden sm:inline">历史记录</span>
