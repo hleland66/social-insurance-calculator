@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react';
 import type { AppStep, HistoryItem } from '@/types';
 import { getVocabulary } from '@/lib/vocabulary';
 import { generatePrompt } from '@/lib/prompt';
-import { addHistoryItem, deleteHistoryItem, clearHistory, loadHistory } from '@/lib/storage';
+import { addHistoryItem, deleteHistoryItem, clearHistory, loadHistory, getApiKey } from '@/lib/storage';
 import Header from '@/components/Header';
 import InputStep from '@/components/InputStep';
 import PreviewStep from '@/components/PreviewStep';
 import GeneratingStep from '@/components/GeneratingStep';
 import ResultStep from '@/components/ResultStep';
 import HistoryModal from '@/components/HistoryModal';
+import SettingsModal from '@/components/SettingsModal';
 
 export default function HomePage() {
   const [currentStep, setCurrentStep] = useState<AppStep>('input');
@@ -18,12 +19,12 @@ export default function HomePage() {
   const [title, setTitle] = useState('');
   const [vocabulary, setVocabulary] = useState<any[]>([]);
   const [prompt, setPrompt] = useState('');
-  const [taskId, setTaskId] = useState('');
   const [resultUrl, setResultUrl] = useState('');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // 加载历史记录
   useEffect(() => {
@@ -43,75 +44,52 @@ export default function HomePage() {
 
   // 确认生成
   const handleConfirmGenerate = async () => {
+    const apiKey = getApiKey();
+
+    if (!apiKey) {
+      setError('请先在设置中配置 API Key');
+      setShowSettings(true);
+      return;
+    }
+
     setCurrentStep('generating');
     setProgress(0);
     setError('');
 
     try {
-      // 调用 API
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, apiKey }),
       });
 
       const data = await response.json();
 
       if (data.code !== 200) {
-        throw new Error(data.error || '创建任务失败');
+        let errorMessage = data.error || '创建任务失败';
+
+        // 翻译常见错误码为用户友好提示
+        if (errorMessage.includes('401') || errorMessage.includes('403')) {
+          errorMessage = 'API Key 无效或权限不足，请检查配置';
+        } else if (errorMessage.includes('429')) {
+          errorMessage = '请求过于频繁，请稍后重试';
+        } else if (errorMessage.includes('balance') || errorMessage.includes('credit')) {
+          errorMessage = '账户余额不足，请充值';
+        }
+
+        throw new Error(errorMessage);
       }
 
-      const newTaskId = data.data.taskId;
-      setTaskId(newTaskId);
-
-      // 轮询结果
-      pollForResult(newTaskId);
+      // V-API 直接返回图片 URL
+      const imageUrl = data.data.imageUrl;
+      setResultUrl(imageUrl);
+      setCurrentStep('result');
+      setProgress(100);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : '生成失败');
       setCurrentStep('input');
     }
-  };
-
-  // 轮询任务结果
-  const pollForResult = async (id: string) => {
-    let currentProgress = 10;
-
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/poll?taskId=${id}`);
-        const data = await response.json();
-
-        if (data.code === 200) {
-          const { status, result } = data.data;
-
-          // 更新进度
-          if (status === 'pending') {
-            setProgress(Math.min(currentProgress + 5, 30));
-          } else if (status === 'processing') {
-            setProgress(Math.min(currentProgress + 10, 80));
-            currentProgress = Math.min(currentProgress + 10, 80);
-          }
-
-          if (status === 'completed' && result?.imageUrl) {
-            clearInterval(interval);
-            setResultUrl(result.imageUrl);
-            setCurrentStep('result');
-            setProgress(100);
-          }
-
-          if (status === 'failed') {
-            clearInterval(interval);
-            setError('图片生成失败，请重试');
-            setCurrentStep('input');
-          }
-        }
-      } catch (err) {
-        clearInterval(interval);
-        setError('获取结果失败，请重试');
-        setCurrentStep('input');
-      }
-    }, 2000);
   };
 
   // 保存到历史
@@ -149,7 +127,6 @@ export default function HomePage() {
     setTitle('');
     setVocabulary([]);
     setPrompt('');
-    setTaskId('');
     setResultUrl('');
     setProgress(0);
     setError('');
@@ -159,6 +136,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-background">
       <Header
         onOpenHistory={() => setShowHistory(true)}
+        onOpenSettings={() => setShowSettings(true)}
         historyCount={history.length}
       />
 
@@ -199,6 +177,11 @@ export default function HomePage() {
           />
         )}
       </main>
+
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
 
       <HistoryModal
         isOpen={showHistory}
