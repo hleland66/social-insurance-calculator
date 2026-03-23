@@ -1,0 +1,61 @@
+<h2>首页布局选择</h2>
+<p class="subtitle">选择您喜欢的首页风格</p>
+
+<div class="cards">
+  <div class="card" data-choice="simple" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <div class="mockup">
+        <div class="mockup-header">简单卡片式</div>
+        <div class="mockup-body" style="padding: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div style="border: 2px dashed #ccc; padding: 60px 40px; text-align: center; border-radius: 8px;">
+            <div style="font-size: 32px;">📤</div>
+            <div style="margin-top: 10px;">上传数据</div>
+          </div>
+          <div style="border: 2px dashed #ccc; padding: 60px 40px; text-align: center; border-radius: 8px;">
+            <div style="font-size: 32px;">📊</div>
+            <div style="margin-top: 10px;">查看结果</div>
+          </div>
+        </div>
+      </div>
+      <h3>简单卡片式</h3>
+      <p>两个大卡片，桌面端横向排列，移动端自动堆叠</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="centered" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <div class="mockup">
+        <div class="mockup-header">居中按钮式</div>
+        <div class="mockup-body" style="padding: 60px; text-align: center;">
+          <h1 style="margin-bottom: 40px; color: #333;">五险一金计算器</h1>
+          <div style="display: flex; flex-direction: column; gap: 16px; max-width: 300px; margin: 0 auto;">
+            <div style="background: #3b82f6; color: white; padding: 16px 24px; border-radius: 8px; cursor: pointer;">上传数据</div>
+            <div style="background: #10b981; color: white; padding: 16px 24px; border-radius: 8px; cursor: pointer;">查看结果</div>
+          </div>
+        </div>
+      </div>
+      <h3>居中按钮式</h3>
+      <p>标题居中，两个大按钮垂直排列</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="sidebar" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <div class="mockup">
+        <div class="mockup-header">侧边导航式</div>
+        <div class="mockup-body" style="display: flex; height: 300px;">
+          <div style="width: 200px; background: #f3f4f6; padding: 20px; border-right: 1px solid #e5e7eb;">
+            <div style="padding: 10px; background: #3b82f6; color: white; border-radius: 6px; margin-bottom: 10px;">首页</div>
+            <div style="padding: 10px; color: #666;">上传</div>
+            <div style="padding: 10px; color: #666;">结果</div>
+          </div>
+          <div style="flex: 1; padding: 40px; display: flex; align-items: center; justify-content: center;">
+            <div style="text-align: center; color: #999;">欢迎使用</div>
+          </div>
+        </div>
+      </div>
+      <h3>侧边导航式</h3>
+      <p>左侧导航栏，适合未来扩展更多功能</p>
+    </div>
+  </div>
+</div>

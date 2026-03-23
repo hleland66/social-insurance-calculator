@@ -11,3 +11,9 @@ yarn-error.log*
 .vercel
 .turbo
 .DS_Store
+
+# TypeScript 构建缓存（自动生成，无需上传）
+*.tsbuildinfo
+
+# Next.js 自动生成的类型声明（无需上传）
+.next-env.d.ts

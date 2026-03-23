@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>快速点名器</title>
+    <title>快速点名器 - 3D地球版</title>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         /* 全局样式 */
         * {
@@ -35,6 +37,7 @@
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
         }
 
         .btn {
@@ -76,59 +79,17 @@
             position: relative;
         }
 
-        /* 旋转动画容器 */
-        #spinner-container {
-            width: 200px;
-            height: 200px;
+        /* 3D地球容器 */
+        #earth-container {
+            width: 300px;
+            height: 300px;
             position: relative;
         }
 
-        .spinner {
+        #earth-canvas {
             width: 100%;
             height: 100%;
-            border-radius: 50%;
-            background: conic-gradient(
-                from 0deg,
-                #6366f1 0deg,
-                #8b5cf6 90deg,
-                #6366f1 180deg,
-                #8b5cf6 270deg,
-                #6366f1 360deg
-            );
-            animation: spin 3s linear infinite;
-        }
-
-        .spinner.fast {
-            animation: spin 0.3s linear infinite;
-        }
-
-        .spinner.stopping {
-            animation: spin-stop 1s ease-out forwards;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        @keyframes spin-stop {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(1080deg); }
-        }
-
-        /* 内圆 */
-        .spinner-inner {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 140px;
-            height: 140px;
-            border-radius: 50%;
-            background: #1a1a2e;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: block;
         }
 
         /* 姓名显示 */
@@ -139,32 +100,42 @@
             transform: translate(-50%, -50%);
             z-index: 10;
             text-align: center;
+            pointer-events: none;
         }
 
         .student-name {
             font-size: 72px;
             font-weight: bold;
             text-shadow: 0 0 30px rgba(99, 102, 241, 0.8),
-                         0 0 60px rgba(99, 102, 241, 0.4);
+                         0 0 60px rgba(99, 102, 241, 0.4),
+                         0 0 100px rgba(139, 92, 246, 0.6);
             opacity: 0;
+            visibility: hidden;
             transform: scale(0);
             transition: all 0.6s ease-out;
         }
 
         .student-name.show {
             opacity: 1;
+            visibility: visible;
             transform: scale(1);
         }
 
         /* 状态选择按钮 */
         .status-buttons {
+            position: absolute;
+            top: 280px;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
-            gap: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
             justify-content: center;
-            margin-top: 30px;
+            width: 320px;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s;
+            z-index: 10;
         }
 
         .status-buttons.show {
@@ -173,12 +144,14 @@
         }
 
         .status-btn {
-            padding: 15px 40px;
-            font-size: 18px;
-            border-radius: 12px;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 10px;
             border: 2px solid transparent;
             cursor: pointer;
             transition: all 0.3s;
+            flex: 0 0 calc(50% - 5px);
+            text-align: center;
         }
 
         .status-btn.normal {
@@ -198,37 +171,6 @@
             border-color: #fff;
         }
 
-        /* 主点名按钮 */
-        .main-button-container {
-            position: absolute;
-            bottom: 120px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-        }
-
-        #start-btn {
-            padding: 20px 60px;
-            font-size: 24px;
-            border-radius: 16px;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            border: none;
-            color: #fff;
-            cursor: pointer;
-            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
-            transition: all 0.3s;
-        }
-
-        #start-btn:hover:not(:disabled) {
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 0 15px 40px rgba(99, 102, 241, 0.6);
-        }
-
-        #start-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
         /* 底部统计栏 */
         .stats-bar {
             display: flex;
@@ -239,6 +181,7 @@
             backdrop-filter: blur(10px);
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             font-size: 16px;
+            z-index: 100;
         }
 
         .stat-item {
@@ -440,9 +383,35 @@
             font-size: 24px;
             z-index: 50;
         }
+
+        /* 星星背景 */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .star {
+            position: absolute;
+            background: #fff;
+            border-radius: 50%;
+            animation: twinkle 2s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
     </style>
 </head>
 <body>
+    <!-- 星星背景 -->
+    <div class="stars" id="stars"></div>
+
     <div id="app">
         <!-- 工具栏 -->
         <div class="toolbar">
@@ -456,21 +425,21 @@
 
         <!-- 主内容区 -->
         <div class="main-content">
-            <!-- 旋转动画 -->
-            <div id="spinner-container">
-                <div class="spinner" id="spinner">
-                    <div class="spinner-inner"></div>
-                </div>
+            <!-- 3D地球 -->
+            <div id="earth-container">
+                <canvas id="earth-canvas"></canvas>
             </div>
 
             <!-- 姓名显示 -->
             <div class="name-display">
                 <div class="student-name" id="student-name"></div>
-                <div class="status-buttons" id="status-buttons">
-                    <button class="status-btn normal" data-status="normal">正常</button>
-                    <button class="status-btn late" data-status="late">迟到</button>
-                    <button class="status-btn absent" data-status="absent">缺勤</button>
-                </div>
+            </div>
+
+            <!-- 状态选择按钮 -->
+            <div class="status-buttons" id="status-buttons">
+                <button class="status-btn normal" data-status="normal">正常</button>
+                <button class="status-btn late" data-status="late">迟到</button>
+                <button class="status-btn absent" data-status="absent">缺勤</button>
             </div>
         </div>
 
@@ -531,9 +500,387 @@
     <div class="loading" id="loading">初始化中...</div>
 
     <script>
+        // ==================== 星星背景 ====================
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            for (let i = 0; i < 100; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.width = Math.random() * 3 + 1 + 'px';
+                star.style.height = star.style.width;
+                star.style.animationDelay = Math.random() * 2 + 's';
+                starsContainer.appendChild(star);
+            }
+        }
+        createStars();
+
+        // ==================== 3D地球控制器 ====================
+        const EarthController = {
+            scene: null,
+            camera: null,
+            renderer: null,
+            earth: null,
+            atmosphere: null,
+            clouds: null,
+            stars: null,
+            animationId: null,
+            rotationSpeed: 0.002,
+            targetRotationSpeed: 0.002,
+            isInitialized: false,
+
+            init() {
+                const container = document.getElementById('earth-container');
+                const canvas = document.getElementById('earth-canvas');
+
+                // 创建场景
+                this.scene = new THREE.Scene();
+
+                // 创建相机
+                this.camera = new THREE.PerspectiveCamera(
+                    45,
+                    container.clientWidth / container.clientHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.z = 3;
+
+                // 创建渲染器
+                this.renderer = new THREE.WebGLRenderer({
+                    canvas: canvas,
+                    antialias: true,
+                    alpha: true
+                });
+                this.renderer.setSize(container.clientWidth, container.clientHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+
+                // 创建地球
+                this.createEarth();
+                this.createAtmosphere();
+                this.createStars();
+
+                // 添加光源
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+                directionalLight.position.set(5, 3, 5);
+                this.scene.add(directionalLight);
+
+                const backLight = new THREE.DirectionalLight(0x6366f1, 0.5);
+                backLight.position.set(-5, -3, -5);
+                this.scene.add(backLight);
+
+                // 开始动画
+                this.animate();
+                this.isInitialized = true;
+
+                // 处理窗口大小变化
+                window.addEventListener('resize', () => this.onResize());
+            },
+
+            createEarth() {
+                const textureLoader = new THREE.TextureLoader();
+
+                // 创建地球几何体
+                const geometry = new THREE.SphereGeometry(1, 64, 64);
+
+                // 加载地球纹理
+                const earthTexture = textureLoader.load(
+                    'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg',
+                    undefined,
+                    undefined,
+                    (error) => {
+                        // 如果纹理加载失败，使用程序化生成的纹理
+                        console.warn('Earth texture loading failed, using procedural texture');
+                        this.createProceduralEarth(geometry);
+                    }
+                );
+
+                // 创建地球材质
+                const material = new THREE.MeshPhongMaterial({
+                    map: earthTexture,
+                    specular: new THREE.Color(0x333333),
+                    shininess: 5
+                });
+
+                this.earth = new THREE.Mesh(geometry, material);
+                this.scene.add(this.earth);
+
+                // 添加云层
+                this.createClouds();
+            },
+
+            createProceduralEarth(geometry) {
+                // 程序化生成地球纹理（备用方案）
+                const canvas = document.createElement('canvas');
+                canvas.width = 2048;
+                canvas.height = 1024;
+                const ctx = canvas.getContext('2d');
+
+                // 海洋背景
+                const oceanGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                oceanGradient.addColorStop(0, '#1a4d7c');
+                oceanGradient.addColorStop(0.5, '#0d6efd');
+                oceanGradient.addColorStop(1, '#1a4d7c');
+                ctx.fillStyle = oceanGradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 绘制简化的大陆
+                ctx.fillStyle = '#3d8c40';
+                // 北美
+                this.drawContinent(ctx, 200, 200, 300, 200);
+                // 南美
+                this.drawContinent(ctx, 350, 500, 150, 250);
+                // 欧洲
+                this.drawContinent(ctx, 900, 180, 200, 150);
+                // 非洲
+                this.drawContinent(ctx, 950, 350, 250, 300);
+                // 亚洲
+                this.drawContinent(ctx, 1100, 150, 400, 250);
+                // 澳洲
+                this.drawContinent(ctx, 1450, 550, 180, 120);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.MeshPhongMaterial({
+                    map: texture,
+                    specular: new THREE.Color(0x333333),
+                    shininess: 5
+                });
+                this.earth.material = material;
+            },
+
+            drawContinent(ctx, x, y, width, height) {
+                ctx.beginPath();
+                ctx.ellipse(x, y, width/2, height/2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // 添加一些随机变化
+                for (let i = 0; i < 5; i++) {
+                    ctx.beginPath();
+                    ctx.ellipse(
+                        x + (Math.random() - 0.5) * width,
+                        y + (Math.random() - 0.5) * height,
+                        width/4 * Math.random(),
+                        height/4 * Math.random(),
+                        Math.random() * Math.PI,
+                        0, Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+            },
+
+            createClouds() {
+                // 创建云层
+                const cloudGeometry = new THREE.SphereGeometry(1.02, 64, 64);
+                const cloudMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                });
+
+                this.clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
+                this.scene.add(this.clouds);
+            },
+
+            addGridLines() {
+                const gridMaterial = new THREE.LineBasicMaterial({
+                    color: 0x4a9eff,
+                    transparent: true,
+                    opacity: 0.3
+                });
+
+                // 纬线
+                for (let i = -80; i <= 80; i += 20) {
+                    const radius = Math.cos(i * Math.PI / 180);
+                    const y = Math.sin(i * Math.PI / 180);
+                    const points = [];
+                    for (let j = 0; j <= 360; j += 10) {
+                        const x = radius * Math.cos(j * Math.PI / 180);
+                        const z = radius * Math.sin(j * Math.PI / 180);
+                        points.push(new THREE.Vector3(x * 1.01, y * 1.01, z * 1.01));
+                    }
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(geometry, gridMaterial);
+                    this.earth.add(line);
+                }
+
+                // 经线
+                for (let i = 0; i < 360; i += 30) {
+                    const points = [];
+                    for (let j = -90; j <= 90; j += 5) {
+                        const radius = Math.cos(j * Math.PI / 180);
+                        const y = Math.sin(j * Math.PI / 180);
+                        const x = radius * Math.cos(i * Math.PI / 180);
+                        const z = radius * Math.sin(i * Math.PI / 180);
+                        points.push(new THREE.Vector3(x * 1.01, y * 1.01, z * 1.01));
+                    }
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(geometry, gridMaterial);
+                    this.earth.add(line);
+                }
+            },
+
+            createAtmosphere() {
+                // 大气层光晕
+                const geometry = new THREE.SphereGeometry(1.15, 64, 64);
+                const material = new THREE.ShaderMaterial({
+                    vertexShader: `
+                        varying vec3 vNormal;
+                        void main() {
+                            vNormal = normalize(normalMatrix * normal);
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        varying vec3 vNormal;
+                        void main() {
+                            float intensity = pow(0.7 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
+                            gl_FragColor = vec4(0.3, 0.6, 1.0, 1.0) * intensity;
+                        }
+                    `,
+                    blending: THREE.AdditiveBlending,
+                    side: THREE.BackSide,
+                    transparent: true
+                });
+
+                this.atmosphere = new THREE.Mesh(geometry, material);
+                this.scene.add(this.atmosphere);
+
+                // 内层发光
+                const glowGeometry = new THREE.SphereGeometry(1.02, 64, 64);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x6366f1,
+                    transparent: true,
+                    opacity: 0.1
+                });
+                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                this.scene.add(glow);
+            },
+
+            createStars() {
+                const starsGeometry = new THREE.BufferGeometry();
+                const starsMaterial = new THREE.PointsMaterial({
+                    color: 0xffffff,
+                    size: 0.02,
+                    transparent: true,
+                    opacity: 0.8
+                });
+
+                const starsVertices = [];
+                for (let i = 0; i < 1000; i++) {
+                    const x = (Math.random() - 0.5) * 100;
+                    const y = (Math.random() - 0.5) * 100;
+                    const z = (Math.random() - 0.5) * 100;
+                    starsVertices.push(x, y, z);
+                }
+
+                starsGeometry.setAttribute('position',
+                    new THREE.Float32BufferAttribute(starsVertices, 3)
+                );
+
+                this.stars = new THREE.Points(starsGeometry, starsMaterial);
+                this.scene.add(this.stars);
+            },
+
+            animate() {
+                this.animationId = requestAnimationFrame(() => this.animate());
+
+                // 平滑过渡旋转速度
+                this.rotationSpeed += (this.targetRotationSpeed - this.rotationSpeed) * 0.05;
+
+                // 旋转地球
+                if (this.earth) {
+                    this.earth.rotation.y += this.rotationSpeed;
+                }
+
+                // 旋转云层（稍微快一点）
+                if (this.clouds) {
+                    this.clouds.rotation.y += this.rotationSpeed * 1.1;
+                }
+
+                // 旋转大气层
+                if (this.atmosphere) {
+                    this.atmosphere.rotation.y += this.rotationSpeed * 0.5;
+                }
+
+                // 缓慢旋转星星
+                if (this.stars) {
+                    this.stars.rotation.y += 0.0001;
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            },
+
+            setRotationSpeed(speed) {
+                this.targetRotationSpeed = speed;
+            },
+
+            pulseEarth() {
+                if (!this.earth) return;
+
+                const startScale = this.earth.scale.x;
+                const targetScale = 1.1;
+                const duration = 500;
+                const startTime = Date.now();
+
+                const animate = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+
+                    // 使用easeInOutQuad
+                    const eased = progress < 0.5
+                        ? 2 * progress * progress
+                        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+                    const scale = startScale + (targetScale - startScale) * eased;
+                    this.earth.scale.set(scale, scale, scale);
+
+                    if (progress < 0.5) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        // 返回正常大小
+                        const returnAnimate = () => {
+                            const elapsed = Date.now() - startTime;
+                            const returnProgress = Math.min((elapsed - duration / 2) / (duration / 2), 1);
+                            const returnEased = 1 - Math.pow(1 - returnProgress, 3);
+                            const scale = targetScale - (targetScale - startScale) * returnEased;
+                            this.earth.scale.set(scale, scale, scale);
+
+                            if (returnProgress < 1) {
+                                requestAnimationFrame(returnAnimate);
+                            }
+                        };
+                        returnAnimate();
+                    }
+                };
+                animate();
+            },
+
+            highlightEarth(color) {
+                if (!this.earth) return;
+
+                const originalColor = this.earth.material.color.getHex();
+                this.earth.material.color.setHex(color);
+
+                setTimeout(() => {
+                    this.earth.material.color.setHex(originalColor);
+                }, 500);
+            },
+
+            onResize() {
+                const container = document.getElementById('earth-container');
+                if (!container || !this.camera || !this.renderer) return;
+
+                this.camera.aspect = container.clientWidth / container.clientHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(container.clientWidth, container.clientHeight);
+            }
+        };
+
         // ==================== Utils ====================
         const Utils = {
-            // 生成 UUID
             generateId() {
                 return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
                     const r = Math.random() * 16 | 0;
@@ -542,7 +889,6 @@
                 });
             },
 
-            // 格式化日期时间
             formatDateTime(timestamp) {
                 const date = new Date(timestamp);
                 const year = date.getFullYear();
@@ -554,7 +900,6 @@
                 return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
             },
 
-            // 获取今日日期字符串
             getTodayString() {
                 const date = new Date();
                 const year = date.getFullYear();
@@ -563,7 +908,6 @@
                 return `${year}-${month}-${day}`;
             },
 
-            // 显示通知
             showToast(message, isError = false) {
                 const toast = document.getElementById('toast');
                 toast.textContent = message;
@@ -589,7 +933,6 @@
             db: null,
             useLocalStorage: false,
 
-            // 初始化数据库
             async init() {
                 try {
                     const request = indexedDB.open(this.dbName, this.dbVersion);
@@ -610,13 +953,11 @@
                         request.onupgradeneeded = (e) => {
                             const db = e.target.result;
 
-                            // 创建 students 对象存储
                             if (!db.objectStoreNames.contains('students')) {
                                 const studentStore = db.createObjectStore('students', { keyPath: 'id' });
                                 studentStore.createIndex('name', 'name', { unique: false });
                             }
 
-                            // 创建 records 对象存储
                             if (!db.objectStoreNames.contains('records')) {
                                 const recordStore = db.createObjectStore('records', { keyPath: 'id' });
                                 recordStore.createIndex('timestamp', 'timestamp', { unique: false });
@@ -631,7 +972,6 @@
                 }
             },
 
-            // 初始化 localStorage
             initLocalStorage() {
                 if (!localStorage.getItem('students')) {
                     localStorage.setItem('students', JSON.stringify([]));
@@ -641,7 +981,6 @@
                 }
             },
 
-            // 初始化模拟数据
             async initMockData() {
                 const students = await this.getAllStudents();
                 if (students.length === 0) {
@@ -657,7 +996,6 @@
                 }
             },
 
-            // IndexedDB 通用操作
             async idbOperation(storeName, mode, operation) {
                 return new Promise((resolve, reject) => {
                     const transaction = this.db.transaction(storeName, mode);
@@ -669,7 +1007,6 @@
                 });
             },
 
-            // 添加学生
             async addStudents(students) {
                 if (this.useLocalStorage) {
                     const existing = JSON.parse(localStorage.getItem('students') || '[]');
@@ -683,7 +1020,6 @@
                 }
             },
 
-            // 获取所有学生
             async getAllStudents() {
                 if (this.useLocalStorage) {
                     return JSON.parse(localStorage.getItem('students') || '[]');
@@ -692,7 +1028,6 @@
                 return this.idbOperation('students', 'readonly', store => store.getAll());
             },
 
-            // 更新学生
             async updateStudent(student) {
                 if (this.useLocalStorage) {
                     const students = JSON.parse(localStorage.getItem('students') || '[]');
@@ -707,7 +1042,6 @@
                 await this.idbOperation('students', 'readwrite', store => store.put(student));
             },
 
-            // 删除学生
             async deleteStudent(studentId) {
                 if (this.useLocalStorage) {
                     const students = JSON.parse(localStorage.getItem('students') || '[]');
@@ -719,7 +1053,6 @@
                 await this.idbOperation('students', 'readwrite', store => store.delete(studentId));
             },
 
-            // 添加记录
             async addRecord(record) {
                 if (this.useLocalStorage) {
                     const records = JSON.parse(localStorage.getItem('records') || '[]');
@@ -731,7 +1064,6 @@
                 await this.idbOperation('records', 'readwrite', store => store.add(record));
             },
 
-            // 获取所有记录
             async getAllRecords() {
                 if (this.useLocalStorage) {
                     return JSON.parse(localStorage.getItem('records') || '[]');
@@ -741,7 +1073,6 @@
                 return records.sort((a, b) => b.timestamp - a.timestamp);
             },
 
-            // 获取今日记录
             async getTodayRecords() {
                 const allRecords = await this.getAllRecords();
                 const now = new Date();
@@ -751,7 +1082,6 @@
                 return allRecords.filter(r => r.timestamp >= todayStart && r.timestamp < todayEnd);
             },
 
-            // 清空所有数据
             async clearAll() {
                 if (this.useLocalStorage) {
                     localStorage.removeItem('students');
@@ -765,7 +1095,6 @@
                 await this.initMockData();
             },
 
-            // 重置迟到计数
             async resetLateCounts() {
                 const students = await this.getAllStudents();
                 for (const student of students) {
@@ -777,28 +1106,23 @@
 
         // ==================== PickerService ====================
         const PickerService = {
-            // 计算学生权重
             calculateWeight(student) {
                 const baseWeight = 1;
                 const lateWeight = 1 + (student.lateCount * 0.5);
                 return Math.min(lateWeight, 5);
             },
 
-            // 加权随机选择
             async pickStudent() {
                 const students = await StorageService.getAllStudents();
                 if (students.length === 0) {
                     throw new Error('没有学生数据');
                 }
 
-                // 计算所有学生权重
                 const weights = students.map(s => this.calculateWeight(s));
                 const totalWeight = weights.reduce((sum, w) => sum + w, 0);
 
-                // 生成随机数
                 let random = Math.random() * totalWeight;
 
-                // 选择学生
                 for (let i = 0; i < students.length; i++) {
                     random -= weights[i];
                     if (random <= 0) {
@@ -812,105 +1136,61 @@
 
         // ==================== AppState ====================
         const AppState = {
-            // 应用状态
-            phase: 'IDLE', // IDLE, SPINNING, SHOWING, SELECTING
+            phase: 'IDLE',
             selectedStudent: null,
             students: [],
             todayRecords: [],
 
-            // 状态转换
             setPhase(newPhase) {
                 this.phase = newPhase;
                 this.updateUI();
             },
 
-            // 更新学生列表
             async refreshStudents() {
                 this.students = await StorageService.getAllStudents();
             },
 
-            // 更新今日记录
             async refreshTodayRecords() {
                 this.todayRecords = await StorageService.getTodayRecords();
             },
 
-            // 更新 UI
             updateUI() {
-                // 更新统计
                 document.getElementById('total-count').textContent = this.students.length;
                 document.getElementById('today-count').textContent = this.todayRecords.length;
                 document.getElementById('late-count').textContent = this.todayRecords.filter(r => r.status === 'late').length;
-
-                // 更新开始按钮状态
                 document.getElementById('start-btn').disabled = (this.phase !== 'IDLE');
-            }
-        };
-
-        // ==================== SpinnerController ====================
-        const SpinnerController = {
-            spinner: null,
-            nameElement: null,
-            statusButtons: null,
-
-            init() {
-                this.spinner = document.getElementById('spinner');
-                this.nameElement = document.getElementById('student-name');
-                this.statusButtons = document.getElementById('status-buttons');
-            },
-
-            startSpin() {
-                this.spinner.classList.add('fast');
-                this.nameElement.classList.remove('show');
-                this.statusButtons.classList.remove('show');
-            },
-
-            stopSpin() {
-                this.spinner.classList.remove('fast');
-                this.spinner.classList.add('stopping');
-
-                // 动画结束后移除 stopping 类
-                setTimeout(() => {
-                    this.spinner.classList.remove('stopping');
-                }, 1000);
-            },
-
-            showName(name) {
-                this.nameElement.textContent = name;
-                this.nameElement.classList.add('show');
-            },
-
-            showStatusButtons() {
-                this.statusButtons.classList.add('show');
-            },
-
-            hideAll() {
-                this.nameElement.classList.remove('show');
-                this.statusButtons.classList.remove('show');
             }
         };
 
         // ==================== RollCallController ====================
         const RollCallController = {
-            statusMap: {
-                'normal': '正常',
-                'late': '迟到',
-                'absent': '缺勤'
+            nameElement: null,
+            statusButtons: null,
+
+            init() {
+                this.nameElement = document.getElementById('student-name');
+                this.statusButtons = document.getElementById('status-buttons');
             },
 
             async start() {
                 if (AppState.phase !== 'IDLE') return;
 
                 AppState.setPhase('SPINNING');
-                SpinnerController.startSpin();
+
+                // 加速旋转
+                EarthController.setRotationSpeed(0.05);
+
+                // 隐藏姓名和按钮
+                this.hideAll();
 
                 try {
                     // 选择学生
                     AppState.selectedStudent = await PickerService.pickStudent();
 
-                    // 1.5秒后停止旋转
+                    // 2秒后减速
                     setTimeout(() => {
-                        SpinnerController.stopSpin();
-                    }, 1500);
+                        EarthController.setRotationSpeed(0.002);
+                    }, 2000);
 
                     // 2.5秒后显示姓名
                     setTimeout(() => {
@@ -921,19 +1201,25 @@
                     console.error(error);
                     Utils.showToast('点名失败：' + error.message, true);
                     AppState.setPhase('IDLE');
-                    SpinnerController.stopSpin();
+                    EarthController.setRotationSpeed(0.002);
                 }
             },
 
             showStudent() {
                 AppState.setPhase('SHOWING');
-                SpinnerController.showName(AppState.selectedStudent.name);
+
+                // 地球脉冲效果
+                EarthController.pulseEarth();
+
+                // 显示姓名
+                this.nameElement.textContent = AppState.selectedStudent.name;
+                this.nameElement.classList.add('show');
 
                 // 显示状态按钮
                 setTimeout(() => {
                     AppState.setPhase('SELECTING');
-                    SpinnerController.showStatusButtons();
-                }, 300);
+                    this.statusButtons.classList.add('show');
+                }, 500);
             },
 
             async handleStatus(status) {
@@ -963,8 +1249,16 @@
                 await AppState.refreshStudents();
                 AppState.updateUI();
 
+                // 根据状态高亮地球
+                const colorMap = {
+                    'normal': 0x22c55e,
+                    'late': 0xfbbf24,
+                    'absent': 0xef4444
+                };
+                EarthController.highlightEarth(colorMap[status]);
+
                 // 隐藏界面
-                SpinnerController.hideAll();
+                this.hideAll();
 
                 // 2秒后重置状态
                 setTimeout(() => {
@@ -974,10 +1268,15 @@
                 }, 2000);
             },
 
-            cancel() {
-                SpinnerController.hideAll();
-                AppState.setPhase('IDLE');
-                AppState.selectedStudent = null;
+            hideAll() {
+                this.nameElement.classList.remove('show');
+                this.statusButtons.classList.remove('show');
+            },
+
+            statusMap: {
+                'normal': '正常',
+                'late': '迟到',
+                'absent': '缺勤'
             }
         };
 
@@ -1155,12 +1454,24 @@
         // ==================== App ====================
         const App = {
             async init() {
+                // 初始化3D地球
+                EarthController.init();
+
+                // 初始化数据
                 await StorageService.init();
                 await AppState.refreshStudents();
                 await AppState.refreshTodayRecords();
-                SpinnerController.init();
+
+                // 初始化控制器
+                RollCallController.init();
+
+                // 绑定事件
                 this.bindEvents();
+
+                // 更新UI
                 AppState.updateUI();
+
+                // 隐藏加载提示
                 document.getElementById('loading').style.display = 'none';
             },
 
@@ -1178,8 +1489,7 @@
                 document.getElementById('close-records-btn').addEventListener('click', () => RecordManager.closeModal('records-modal'));
                 document.getElementById('confirm-cancel').addEventListener('click', () => ConfirmDialog.cancel());
                 document.getElementById('confirm-ok').addEventListener('click', () => ConfirmDialog.confirm());
-                document.getElementById('student-name').addEventListener('click', () => { if (AppState.phase === 'SELECTING') RollCallController.cancel(); });
-                document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { StudentManager.closeModal('students-modal'); RecordManager.closeModal('records-modal'); ConfirmDialog.cancel(); if (AppState.phase === 'SELECTING') RollCallController.cancel(); } });
+                document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { StudentManager.closeModal('students-modal'); RecordManager.closeModal('records-modal'); ConfirmDialog.cancel(); if (AppState.phase === 'SELECTING') RollCallController.hideAll(); } });
                 document.querySelectorAll('.modal').forEach(modal => { modal.addEventListener('click', (e) => { if (e.target === modal) { modal.classList.remove('show'); ConfirmDialog.callback = null; } }); });
             }
         };

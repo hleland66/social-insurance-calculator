@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>课堂点名器 - 测试控制台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #8b5cf6;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .section {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            color: #06b6d4;
+            font-size: 18px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+        }
+        .btn {
+            background: #6366f1;
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: #8b5cf6;
+            transform: translateY(-2px);
+        }
+        .btn-success { background: #22c55e; }
+        .btn-success:hover { background: #16a34a; }
+        .btn-danger { background: #ef4444; }
+        .btn-danger:hover { background: #dc2626; }
+        .console-output {
+            background: #0f172a;
+            border-radius: 6px;
+            padding: 15px;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .console-output .log { margin: 5px 0; }
+        .console-output .pass { color: #22c55e; }
+        .console-output .fail { color: #ef4444; }
+        .console-output .info { color: #60a5fa; }
+        .console-output .warn { color: #fbbf24; }
+        .test-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .test-item {
+            background: #334155;
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .test-item.pass { border-left: 3px solid #22c55e; }
+        .test-item.fail { border-left: 3px solid #ef4444; }
+        .test-item .icon { font-size: 16px; }
+        .test-item .name { flex: 1; }
+        .stats {
+            display: flex;
+            gap: 30px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #334155;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .stat-label {
+            color: #94a3b8;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .stat-item.pass .stat-value { color: #22c55e; }
+        .stat-item.fail .stat-value { color: #ef4444; }
+        .stat-item.percent .stat-value { color: #8b5cf6; }
+        .link-section {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .link-section a {
+            color: #8b5cf6;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        .link-section a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="link-section">
+            <span>📋 测试控制台</span>
+            <a href="index.html" target="_blank">🚀 打开应用 →</a>
+        </div>
+
+        <h1>课堂点名器 - 自动化测试</h1>
+
+        <div class="section">
+            <h2>🎮 测试控制</h2>
+            <button class="btn btn-success" onclick="runAllTests()">▶ 运行所有测试</button>
+            <button class="btn" onclick="testModules()">🧪 模块测试</button>
+            <button class="btn" onclick="testDOM()">🎨 DOM 测试</button>
+            <button class="btn" onclick="testUtils()">🔧 Utils 测试</button>
+            <button class="btn" onclick="testWeight()">⚖️ 权重测试</button>
+            <button class="btn btn-danger" onclick="clearConsole()">🗑️ 清空输出</button>
+
+            <div class="stats" id="stats" style="display: none;">
+                <div class="stat-item pass">
+                    <div class="stat-value" id="pass-count">0</div>
+                    <div class="stat-label">通过</div>
+                </div>
+                <div class="stat-item fail">
+                    <div class="stat-value" id="fail-count">0</div>
+                    <div class="stat-label">失败</div>
+                </div>
+                <div class="stat-item percent">
+                    <div class="stat-value" id="percent">0%</div>
+                    <div class="stat-label">成功率</div>
+                </div>
+            </div>
+
+            <div class="test-results" id="results"></div>
+        </div>
+
+        <div class="section">
+            <h2>📺 控制台输出</h2>
+            <div class="console-output" id="console">
+                <div class="log info">点击上方按钮开始测试...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 获取主窗口的测试目标
+        let targetWindow = null;
+        let testResults = [];
+        let passCount = 0;
+        let failCount = 0;
+
+        function log(msg, type = 'log') {
+            const console = document.getElementById('console');
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = msg;
+            console.appendChild(div);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '<div class="log info">控制台已清空</div>';
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('stats').style.display = 'none';
+            testResults = [];
+            passCount = 0;
+            failCount = 0;
+        }
+
+        function addResult(name, passed) {
+            testResults.push({ name, passed });
+            if (passed) passCount++;
+            else failCount++;
+
+            const resultsDiv = document.getElementById('results');
+            const item = document.createElement('div');
+            item.className = `test-item ${passed ? 'pass' : 'fail'}`;
+            item.innerHTML = `
+                <span class="icon">${passed ? '✅' : '❌'}</span>
+                <span class="name">${name}</span>
+            `;
+            resultsDiv.appendChild(item);
+
+            // 更新统计
+            document.getElementById('stats').style.display = 'flex';
+            document.getElementById('pass-count').textContent = passCount;
+            document.getElementById('fail-count').textContent = failCount;
+            const percent = testResults.length > 0 ? ((passCount / testResults.length) * 100).toFixed(1) : 0;
+            document.getElementById('percent').textContent = percent + '%';
+        }
+
+        // 模块测试
+        function testModules() {
+            log('🧩 开始模块测试...', 'info');
+
+            const modules = [
+                'MOCK_STUDENTS', 'Utils', 'DataStore', 'RandomPicker',
+                'EarthRenderer', 'CSVExporter', 'UIController', 'App'
+            ];
+
+            modules.forEach(m => {
+                const exists = typeof window[m] !== 'undefined';
+                addResult(`模块 ${m}`, exists);
+                log(`${exists ? '✅' : '❌'} ${m}`, exists ? 'pass' : 'fail');
+            });
+
+            log(`✓ 模块测试完成: ${passCount}/${testResults.length} 通过`, 'pass');
+        }
+
+        // DOM 测试
+        function testDOM() {
+            log('🎨 开始 DOM 测试...', 'info');
+
+            const elements = [
+                { id: 'start-btn', name: '开始按钮' },
+                { id: 'export-btn', name: '导出按钮' },
+                { id: 'view-records-btn', name: '查看记录按钮' },
+                { id: 'reset-late-btn', name: '重置迟到按钮' },
+                { id: 'clear-data-btn', name: '清空数据按钮' },
+                { id: 'student-name', name: '学生姓名显示' },
+                { id: 'status-buttons', name: '状态按钮组' },
+                { id: 'today-count', name: '今日统计' },
+                { id: 'records-modal', name: '记录弹窗' },
+                { id: 'confirm-modal', name: '确认弹窗' },
+                { id: 'toast', name: 'Toast 通知' }
+            ];
+
+            elements.forEach(({ id, name }) => {
+                const exists = document.getElementById(id) !== null;
+                addResult(name, exists);
+                log(`${exists ? '✅' : '❌'} ${name} (#${id})`, exists ? 'pass' : 'fail');
+            });
+
+            log(`✓ DOM 测试完成: ${passCount}/${testResults.length} 通过`, 'pass');
+        }
+
+        // Utils 测试
+        function testUtils() {
+            log('🔧 开始 Utils 测试...', 'info');
+
+            if (typeof Utils === 'undefined') {
+                addResult('Utils 模块', false);
+                log('❌ Utils 模块未定义', 'fail');
+                return;
+            }
+
+            // UUID 测试
+            const id = Utils.generateId();
+            const uuidValid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+            addResult('UUID 生成', uuidValid);
+            log(`${uuidValid ? '✅' : '❌'} UUID: ${id}`, uuidValid ? 'pass' : 'fail');
+
+            // 日期格式化测试
+            const timestamp = 1710985200000;
+            const formatted = Utils.formatDateTime(timestamp);
+            const dateValid = formatted === '2024-03-21 10:00:00';
+            addResult('日期格式化', dateValid);
+            log(`${dateValid ? '✅' : '❌'} 日期格式化: ${formatted}`, dateValid ? 'pass' : 'fail');
+
+            // 今日日期测试
+            const today = Utils.getTodayString();
+            const todayValid = /^\d{4}-\d{2}-\d{2}$/.test(today);
+            addResult('今日日期', todayValid);
+            log(`${todayValid ? '✅' : '❌'} 今日: ${today}`, todayValid ? 'pass' : 'fail');
+
+            log(`✓ Utils 测试完成`, 'pass');
+        }
+
+        // 权重测试
+        function testWeight() {
+            log('⚖️  开始权重测试...', 'info');
+
+            if (typeof RandomPicker === 'undefined') {
+                addResult('RandomPicker 模块', false);
+                log('❌ RandomPicker 模块未定义', 'fail');
+                return;
+            }
+
+            const weights = [
+                { lateCount: 0, expected: 1 },
+                { lateCount: 2, expected: 2 },
+                { lateCount: 4, expected: 3 },
+                { lateCount: 8, expected: 5 },
+                { lateCount: 10, expected: 5 }
+            ];
+
+            weights.forEach(({ lateCount, expected }) => {
+                const student = { lateCount };
+                const weight = RandomPicker.calculateWeight(student);
+                const passed = weight === expected;
+                addResult(`迟到${lateCount}次权重`, passed);
+                log(`${passed ? '✅' : '❌'} 迟到${lateCount}次 → ${weight} (预期${expected})`, passed ? 'pass' : 'fail');
+            });
+
+            log(`✓ 权重测试完成`, 'pass');
+        }
+
+        // 运行所有测试
+        async function runAllTests() {
+            clearConsole();
+            log('╔══════════════════════════════════════════════════════════════╗', 'info');
+            log('║           课堂点名器 - 完整测试套件                          ║', 'info');
+            log('╚══════════════════════════════════════════════════════════════╝', 'info');
+            log('', 'info');
+
+            testModules();
+            await sleep(300);
+            testDOM();
+            await sleep(300);
+            testUtils();
+            await sleep(300);
+            testWeight();
+
+            log('', 'info');
+            log('═════════════════════════════════════════════════════════════', 'info');
+            log(`📊 测试完成: ${passCount}/${testResults.length} 通过`, passCount === testResults.length ? 'pass' : 'warn');
+            log(`📈 成功率: ${((passCount / testResults.length) * 100).toFixed(1)}%`, 'info');
+            log('═════════════════════════════════════════════════════════════', 'info');
+
+            if (passCount === testResults.length) {
+                log('🎉 所有测试通过！', 'pass');
+            }
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // 页面加载完成
+        window.addEventListener('DOMContentLoaded', () => {
+            log('✅ 测试控制台已就绪', 'pass');
+            log('💡 提示: 点击 "运行所有测试" 开始自动化测试', 'info');
+        });
+    </script>
+</body>
+</html>

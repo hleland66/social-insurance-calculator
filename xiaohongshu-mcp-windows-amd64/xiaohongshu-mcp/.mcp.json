@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "xiaohongshu": {
+      "command": "D:/codes/Test/202512_Claude_Code/xiaohongshu-mcp-windows-amd64/xiaohongshu-mcp-windows-amd64.exe",
+      "args": [],
+      "env": {
+        "COOKIES_FILE": "D:/codes/Test/202512_Claude_Code/xiaohongshu-mcp-windows-amd64/cookies.json"
+      }
+    }
+  }
+}

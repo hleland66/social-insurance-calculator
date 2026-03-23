@@ -16,6 +16,9 @@ export function SpinnerCanvas({ options, rotation, onCanvasRef }: SpinnerCanvasP
     onCanvasRef(canvasRef.current);
   }, [onCanvasRef]);
 
+  // 使用 JSON.stringify 来稳定 options 依赖
+  const optionsKey = JSON.stringify(options.map(o => ({ id: o.id, name: o.name, weight: o.weight, color: o.color })));
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -81,7 +84,7 @@ export function SpinnerCanvas({ options, rotation, onCanvasRef }: SpinnerCanvasP
     ctx.fillStyle = '#2D3436';
     ctx.fill();
 
-  }, [options, rotation]);
+  }, [optionsKey, rotation]);
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', margin: '20px 0' }}>
