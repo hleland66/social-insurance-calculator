@@ -48,6 +48,26 @@ export class ExcelParser {
   }
 
   /**
+   * 解析单独的城市标准文件
+   */
+  static async parseCitiesFile(file: File): Promise<City[]> {
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = xlsx.read(arrayBuffer, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    return this.parseCities(sheet);
+  }
+
+  /**
+   * 解析单独的工资数据文件
+   */
+  static async parseSalariesFile(file: File): Promise<Salary[]> {
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = xlsx.read(arrayBuffer, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    return this.parseSalaries(sheet);
+  }
+
+  /**
    * 解析 salaries 工作表
    */
   private static parseSalaries(sheet: xlsx.WorkSheet): Salary[] {

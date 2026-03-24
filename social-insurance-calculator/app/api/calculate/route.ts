@@ -15,8 +15,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 验证输入格式
+    if (typeof city_name !== 'string' || city_name.trim().length === 0) {
+      return NextResponse.json(
+        { success: false, error: '城市名称格式不正确' },
+        { status: 400 }
+      );
+    }
+
+    if (typeof year !== 'string' || !/^\d{4}$/.test(year)) {
+      return NextResponse.json(
+        { success: false, error: '年份格式不正确，应为四位数字（如：2024）' },
+        { status: 400 }
+      );
+    }
+
+    // 清理输入
+    const trimmedCityName = city_name.trim();
+    const trimmedYear = year.trim();
+
     // 获取城市标准
-    const city = await db.getCity(city_name, year);
+    const city = await db.getCity(trimmedCityName, trimmedYear);
 
     // 获取所有工资数据
     const salaries = await db.getSalaries();

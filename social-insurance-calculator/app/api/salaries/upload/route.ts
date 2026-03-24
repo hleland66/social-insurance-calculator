@@ -1,4 +1,4 @@
-// app/api/upload/route.ts
+// app/api/salaries/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { ExcelParser } from '@/lib/excel-parser';
 import { db } from '@/lib/supabase';
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证文件大小 (限制 5MB)
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
     if (file.size === 0) {
       return NextResponse.json(
         { success: false, error: '文件不能为空' },
@@ -38,17 +38,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 解析 Excel
-    const { cities, salaries } = await ExcelParser.parse(file);
+    // 解析 Excel（仅 salaries）
+    const salaries = await ExcelParser.parseSalariesFile(file);
+
+    if (salaries.length === 0) {
+      return NextResponse.json(
+        { success: false, error: '未找到有效的工资数据，请检查表格格式' },
+        { status: 400 }
+      );
+    }
 
     // 写入数据库
-    const citiesInserted = await db.upsertCities(cities);
     const salariesInserted = await db.upsertSalaries(salaries);
 
     return NextResponse.json({
       success: true,
       data: {
-        citiesInserted: citiesInserted.length,
         salariesInserted: salariesInserted.length,
       },
     });

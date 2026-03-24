@@ -19,15 +19,22 @@ export const db = {
   },
 
   async upsertCities(cities: any[]) {
-    // 先删除同名同年的记录
-    for (const city of cities) {
-      await supabase
-        .from('cities')
-        .delete()
-        .eq('city_name', city.city_name)
-        .eq('year', city.year);
-    }
-    // 插入新记录
+    if (cities.length === 0) return [];
+
+    // 批量删除同名同年的记录 (收集所有需要删除的组合)
+    const deleteConditions = cities.map(c => ({
+      city_name: c.city_name,
+      year: c.year,
+    }));
+
+    // 使用 or 条件批量删除
+    const { error: deleteError } = await supabase
+      .from('cities')
+      .delete()
+      .or(deleteConditions.map(c => `and(city_name.eq.${c.city_name},year.eq.${c.year})`).join(','));
+    if (deleteError) throw deleteError;
+
+    // 批量插入新记录
     const { data, error } = await supabase
       .from('cities')
       .insert(cities)
@@ -49,15 +56,26 @@ export const db = {
 
   // Salaries
   async upsertSalaries(salaries: any[]) {
-    // 先删除同名同月的记录
-    for (const salary of salaries) {
-      await supabase
+    if (salaries.length === 0) return [];
+
+    // 批量删除同名同月的记录
+    const deleteConditions = salaries.map(s => ({
+      employee_id: s.employee_id,
+      month: s.month,
+    }));
+
+    // 分批处理 (Supabase 对 or 查询有限制，每批最多 50 条)
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < deleteConditions.length; i += BATCH_SIZE) {
+      const batch = deleteConditions.slice(i, i + BATCH_SIZE);
+      const { error: deleteError } = await supabase
         .from('salaries')
         .delete()
-        .eq('employee_id', salary.employee_id)
-        .eq('month', salary.month);
+        .or(batch.map(s => `and(employee_id.eq.${s.employee_id},month.eq.${s.month})`).join(','));
+      if (deleteError) throw deleteError;
     }
-    // 插入新记录
+
+    // 批量插入新记录
     const { data, error } = await supabase
       .from('salaries')
       .insert(salaries)
